@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments (CRITICAL - these are huge!)
+bert_env/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# PyTorch Model Files (HUGE FILES!)
+*.pth
+*.pt
+*.bin
+*.safetensors
+models/*.pth
+models/*.pt  
+models/*.bin
+models/checkpoint*
+models/pytorch_model.bin
+
+# Data Files (can be large)
+data/*.csv
+data/*.json
+data/*.txt
+data/*.tsv
+data/*.parquet
+!data/sample_data.csv
+!data/README.md
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# HuggingFace Cache (can be huge!)
+.cache/huggingface/
+transformers_cache/
+
+# Flask
+instance/
+.webassets-cache
+
+# Environment variables
+.env
+.env.local
