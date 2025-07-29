@@ -86,4 +86,6 @@ instance/
 
 # Environment variables
 .env
-.env.local
+.env.localbert_env/
+__pycache__/
+*.pyc
