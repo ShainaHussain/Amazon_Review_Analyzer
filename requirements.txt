@@ -1,6 +1,7 @@
 streamlit
+pandas
+numpy
 transformers
 torch
-plotly 
-pandas 
-numpy
+plotly
+openpyxl

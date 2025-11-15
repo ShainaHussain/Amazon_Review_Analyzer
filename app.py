@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+#  CSS
 st.markdown("""
 <style>
     .main-header {
@@ -379,48 +379,123 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("📊 Analytics will appear here after your first analysis")
+            st.info("p")
         
-        # Batch analysis option
-        st.subheader("📦 Batch Analysis")
-        uploaded_file = st.file_uploader(
-            "Upload CSV with reviews",
-            type=['csv'],
-            help="Upload a CSV file with a 'review' column for batch analysis"
-        )
+        # Replace the batch analysis section (around line 335-375) with this corrected version:
+
+# Batch analysis option
+st.subheader("📦 Batch Analysis")
+uploaded_file = st.file_uploader(
+    "Upload CSV with reviews",
+    type=['csv', 'xlsx'],
+    help="Upload a CSV/Excel file with a 'review' column for batch analysis"
+)
+
+if uploaded_file is not None:
+    try:
+        # Handle both CSV and Excel files
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        elif uploaded_file.name.endswith('.xlsx'):
+            df = pd.read_excel(uploaded_file)
+        else:
+            st.error("Unsupported file format")
+            df = None
         
-        if uploaded_file is not None:
-            try:
-                df = pd.read_csv(uploaded_file)
-                if 'review' in df.columns:
-                    st.write(f"📊 Found {len(df)} reviews")
+        if df is not None:
+            # Check for 'review' column (case-insensitive)
+            review_col = None
+            for col in df.columns:
+                if col.lower() == 'review':
+                    review_col = col
+                    break
+            
+            if review_col:
+                # Filter out empty reviews
+                valid_reviews = df[df[review_col].notna()][review_col]
+                st.write(f"📊 Found {len(valid_reviews)} valid reviews")
+                
+                if len(valid_reviews) > 0:
+                    # Limit number of reviews for analysis
+                    max_reviews = min(50, len(valid_reviews))
                     
                     if st.button("Analyze All Reviews"):
                         progress_bar = st.progress(0)
+                        status_text = st.empty()
                         results = []
                         
-                        for i, review in enumerate(df['review'].head(10)):  # Limit to 10 for demo
-                            if pd.notna(review):
-                                result = predict_sentiment(str(review), tokenizer, model)
-                                results.append({
-                                    'review': str(review)[:50] + "...",
-                                    'sentiment': result['label'],
-                                    'confidence': result['confidence']
-                                })
-                            progress_bar.progress((i + 1) / min(10, len(df)))
+                        for i, review in enumerate(valid_reviews.head(max_reviews)):
+                            try:
+                                status_text.text(f"Analyzing review {i+1}/{max_reviews}...")
+                                
+                                # Convert to string and check length
+                                review_text = str(review).strip()
+                                
+                                if len(review_text) > 0:
+                                    result = predict_sentiment(review_text, tokenizer, model)
+                                    results.append({
+                                        'review': review_text[:50] + "..." if len(review_text) > 50 else review_text,
+                                        'sentiment': result['label'],
+                                        'confidence': f"{result['confidence']:.1%}"
+                                    })
+                                    
+                                    # Update session history
+                                    st.session_state.analysis_history.append({
+                                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                        'text': review_text[:100] + "..." if len(review_text) > 100 else review_text,
+                                        'label': result['label'],
+                                        'confidence': result['confidence'],
+                                        'word_count': len(review_text.split())
+                                    })
+                                    
+                            except Exception as e:
+                                st.warning(f"Error analyzing review {i+1}: {str(e)}")
+                                continue
+                            
+                            # Update progress
+                            progress_bar.progress((i + 1) / max_reviews)
                         
-                        # Display batch results
-                        results_df = pd.DataFrame(results)
-                        st.dataframe(results_df, use_container_width=True)
+                        status_text.text("Analysis complete!")
                         
-                        # Summary
-                        positive_count = len([r for r in results if r['sentiment'] == 'Positive'])
-                        st.write(f"✅ {positive_count} Positive | ❌ {len(results) - positive_count} Negative")
-                        
+                        if results:
+                            # Display batch results
+                            results_df = pd.DataFrame(results)
+                            st.dataframe(results_df, use_container_width=True)
+                            
+                            # Summary statistics
+                            positive_count = len([r for r in results if r['sentiment'] == 'Positive'])
+                            negative_count = len(results) - positive_count
+                            
+                            summary_col1, summary_col2, summary_col3 = st.columns(3)
+                            with summary_col1:
+                                st.metric("Total Analyzed", len(results))
+                            with summary_col2:
+                                st.metric("✅ Positive", positive_count)
+                            with summary_col3:
+                                st.metric("❌ Negative", negative_count)
+                            
+                            # Update total analyses counter
+                            st.session_state.model_metrics['total_analyses'] += len(results)
+                            
+                            # Download results
+                            csv_output = results_df.to_csv(index=False)
+                            st.download_button(
+                                label="📥 Download Results",
+                                data=csv_output,
+                                file_name=f"batch_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
+                            )
+                        else:
+                            st.warning("No reviews could be analyzed. Please check your data.")
                 else:
-                    st.error("CSV must contain a 'review' column")
-            except Exception as e:
-                st.error(f"Error processing file: {str(e)}")
+                    st.info("No valid reviews found in the uploaded file.")
+            else:
+                st.error("❌ CSV must contain a 'review' column (case-insensitive)")
+                st.info(f"Available columns: {', '.join(df.columns.tolist())}")
+                
+    except Exception as e:
+        st.error(f"❌ Error processing file: {str(e)}")
+        st.info("Please ensure your file is properly formatted and not corrupted.")
     
     # Footer
     st.markdown("---")

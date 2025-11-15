@@ -1,7 +1,7 @@
 🛒 Sentimart
 AI-Powered Sentiment Analysis for Product Reviews
 
-Built with Hugging Face Transformers and Streamlit for the Amazon ML Summer Internship.
+Built with Hugging Face Transformers and Streamlit 
 
 📌 Overview
 Sentimart is an interactive web app that performs sentiment analysis on Amazon product reviews using a fine-tuned BERT-based transformer model. It not only predicts whether a review is positive or negative, but also offers in-depth analytics like confidence scores, text statistics, and batch processing support.
