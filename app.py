@@ -8,67 +8,59 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
 import time
-import json
 import re
-from io import StringIO
+from urllib.parse import urlparse, parse_qs
 
 # Page config
 st.set_page_config(
-    page_title="Sentimart",
+    page_title="Sentimart Advanced",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-#  CSS
+# Custom CSS with gradient theme
 st.markdown("""
 <style>
     .main-header {
-        background: linear-gradient(90deg, #FF9500, #FF6B35);
-        padding: 2rem;
-        border-radius: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2.5rem;
+        border-radius: 15px;
         color: white;
         text-align: center;
         margin-bottom: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
-    
     .metric-card {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #FF9500;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 5px solid #667eea;
         margin: 0.5rem 0;
     }
-    
     .result-positive {
-        background: #d4edda;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
         color: #155724;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #28a745;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 5px solid #28a745;
     }
-    
     .result-negative {
-        background: #f8d7da;
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
         color: #721c24;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #dc3545;
-    }
-    
-    .model-info {
-        background: #e3f2fd;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #2196f3;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 5px solid #dc3545;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Load model with caching
+# ============================================================================
+# MODEL & SESSION STATE
+# ============================================================================
+
 @st.cache_resource
 def load_model():
-    """Load the pre-trained BERT model and tokenizer"""
     try:
         tokenizer = AutoTokenizer.from_pretrained("model")
         model = AutoModelForSequenceClassification.from_pretrained("model")
@@ -77,62 +69,24 @@ def load_model():
         st.error(f"Error loading model: {str(e)}")
         return None, None, False
 
-# Initialize session state
 if 'analysis_history' not in st.session_state:
     st.session_state.analysis_history = []
-if 'model_metrics' not in st.session_state:
-    st.session_state.model_metrics = {
-        'accuracy': 0.94,
-        'precision': 0.93,
-        'recall': 0.95,
-        'f1_score': 0.94,
-        'total_analyses': 0
-    }
+if 'batch_results' not in st.session_state:
+    st.session_state.batch_results = None
+if 'total_analyses' not in st.session_state:
+    st.session_state.total_analyses = 0
 
-# Sample reviews for testing
-SAMPLE_REVIEWS = {
-    "Positive Tech Review": "This smartphone is absolutely amazing! The camera quality is outstanding, battery lasts all day, and the performance is lightning fast. Best purchase I've made this year. Highly recommend to everyone!",
-    "Negative Product Review": "Terrible product. Arrived damaged, poor quality materials, and completely different from the description. Customer service was unhelpful. Would not recommend and requesting a refund immediately.",
-    "Mixed Sentiment": "The product has some good features like fast shipping and nice packaging, but the quality is mediocre for the price. It works as expected but nothing exceptional. Might be okay for casual use.",
-    "Neutral Review": "The item arrived on time and matches the description. Standard quality product, nothing special but does what it's supposed to do. Average experience overall."
-}
-
-def analyze_text_features(text):
-    """Extract various text features for analysis"""
-    word_count = len(text.split())
-    char_count = len(text)
-    sentence_count = len(re.findall(r'[.!?]+', text))
-    exclamation_count = text.count('!')
-    question_count = text.count('?')
-    caps_ratio = sum(1 for c in text if c.isupper()) / len(text) if text else 0
-    
-    return {
-        'word_count': word_count,
-        'char_count': char_count,
-        'sentence_count': max(1, sentence_count),
-        'exclamation_count': exclamation_count,
-        'question_count': question_count,
-        'caps_ratio': caps_ratio,
-        'avg_word_length': np.mean([len(word) for word in text.split()]) if text.split() else 0
-    }
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 
 def predict_sentiment(text, tokenizer, model):
-    """Predict sentiment with confidence score"""
-    inputs = tokenizer(
-        text, 
-        return_tensors="pt", 
-        truncation=True, 
-        padding=True, 
-        max_length=512
-    )
-    
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
     with torch.no_grad():
         outputs = model(**inputs)
         probs = F.softmax(outputs.logits, dim=1)
         pred_class = torch.argmax(probs, dim=1).item()
         confidence = probs[0][pred_class].item()
-        
-        # Get both class probabilities
         positive_prob = probs[0][1].item()
         negative_prob = probs[0][0].item()
     
@@ -144,8 +98,107 @@ def predict_sentiment(text, tokenizer, model):
         'label': "Positive" if pred_class == 1 else "Negative"
     }
 
+def detect_url_type(url):
+    url_lower = url.lower()
+    if 'youtube.com' in url_lower or 'youtu.be' in url_lower:
+        return 'youtube'
+    elif 'reddit.com' in url_lower:
+        return 'reddit'
+    elif 'amazon' in url_lower:
+        return 'amazon'
+    return 'unknown'
+
+def extract_youtube_video_id(url):
+    parsed_url = urlparse(url)
+    if parsed_url.hostname == 'youtu.be':
+        return parsed_url.path[1:]
+    if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
+        if parsed_url.path == '/watch':
+            return parse_qs(parsed_url.query).get('v', [None])[0]
+    return None
+
+def fetch_demo_comments(platform, count=50):
+    """Generate demo comments for different platforms"""
+    youtube_comments = [
+        "This video is absolutely amazing! Great content and very informative.",
+        "Thanks for sharing this. Really helpful tutorial!",
+        "Not sure about this approach. Seems too complicated for beginners.",
+        "Excellent explanation! Subscribed!",
+        "Could you make a follow-up video on advanced topics?",
+        "This didn't work for me. Getting errors.",
+        "Best tutorial on this topic I've found. Thank you!",
+        "The quality could be better but good content overall.",
+        "Waste of time. Nothing new here.",
+        "Perfect timing! I was just looking for this information.",
+    ]
+    
+    reddit_comments = [
+        "This is exactly what I needed! Thanks for posting.",
+        "Not convinced this is the best approach.",
+        "Can confirm, this worked perfectly for me!",
+        "Terrible advice. Please don't follow this.",
+        "Great post! Saved for later reference.",
+        "Has anyone else tried this? Results?",
+        "This should be upvoted more. Quality content.",
+        "Downvoted. This is misleading information.",
+    ]
+    
+    amazon_reviews = [
+        "Amazing product! Exceeded my expectations in every way.",
+        "Good quality for the price. Would recommend.",
+        "Decent product but shipping was slow.",
+        "Not as described. Very disappointed.",
+        "Terrible quality. Broke after one use.",
+        "Exactly what I was looking for! Fast shipping too.",
+        "Works well but instructions could be clearer.",
+        "Five stars! Best purchase this year.",
+        "Returned it. Complete waste of money.",
+        "Perfect for my needs. Happy with purchase.",
+    ]
+    
+    if platform == 'youtube':
+        return youtube_comments[:count]
+    elif platform == 'reddit':
+        return reddit_comments[:count]
+    elif platform == 'amazon':
+        return amazon_reviews[:count]
+    return []
+
+def read_file_content(uploaded_file):
+    """Read content from uploaded files"""
+    try:
+        file_extension = uploaded_file.name.split('.')[-1].lower()
+        
+        if file_extension == 'csv':
+            df = pd.read_csv(uploaded_file)
+            return df, 'dataframe'
+        
+        elif file_extension in ['xlsx', 'xls']:
+            df = pd.read_excel(uploaded_file)
+            return df, 'dataframe'
+        
+        elif file_extension == 'txt':
+            content = uploaded_file.read().decode('utf-8')
+            return content, 'text'
+        
+        elif file_extension == 'json':
+            content = uploaded_file.read().decode('utf-8')
+            import json
+            data = json.loads(content)
+            return data, 'json'
+        
+        else:
+            return None, 'unsupported'
+            
+    except Exception as e:
+        st.error(f"Error reading file: {str(e)}")
+        return None, 'error'
+
+# ============================================================================
+# VISUALIZATION FUNCTIONS
+# ============================================================================
+
 def create_confidence_chart(positive_prob, negative_prob):
-    """Create a confidence visualization"""
     fig = go.Figure(data=[
         go.Bar(
             x=['Negative', 'Positive'],
@@ -155,175 +208,139 @@ def create_confidence_chart(positive_prob, negative_prob):
             textposition='auto',
         )
     ])
-    
     fig.update_layout(
         title="Sentiment Confidence Scores",
         xaxis_title="Sentiment",
         yaxis_title="Probability",
         yaxis=dict(tickformat='.0%'),
-        height=400,
+        height=350,
         showlegend=False
     )
-    
     return fig
 
-def create_history_chart():
-    """Create a chart showing analysis history"""
-    if not st.session_state.analysis_history:
-        return None
-    
-    df = pd.DataFrame(st.session_state.analysis_history)
-    
-    # Count sentiments over time
-    sentiment_counts = df['label'].value_counts()
-    
-    fig = px.pie(
-        values=sentiment_counts.values,
-        names=sentiment_counts.index,
-        title="Analysis Distribution",
-        color_discrete_map={'Positive': '#51cf66', 'Negative': '#ff6b6b'}
+def create_batch_distribution_chart(results_df):
+    sentiment_counts = results_df['sentiment'].value_counts()
+    fig = go.Figure(data=[
+        go.Pie(
+            labels=sentiment_counts.index,
+            values=sentiment_counts.values,
+            hole=0.4,
+            marker_colors=['#51cf66' if label == 'Positive' else '#ff6b6b' 
+                          for label in sentiment_counts.index]
+        )
+    ])
+    fig.update_layout(title="Sentiment Distribution", height=350)
+    return fig
+
+def create_confidence_histogram(results_df):
+    fig = go.Figure(data=[
+        go.Histogram(
+            x=results_df['confidence'],
+            nbinsx=20,
+            marker_color='#667eea',
+            opacity=0.7
+        )
+    ])
+    fig.update_layout(
+        title="Confidence Distribution",
+        xaxis_title="Confidence Score",
+        yaxis_title="Count",
+        height=350
     )
-    
     return fig
 
-def export_results():
-    """Export analysis history to CSV"""
-    if st.session_state.analysis_history:
-        df = pd.DataFrame(st.session_state.analysis_history)
-        csv = df.to_csv(index=False)
-        return csv
-    return None
+# ============================================================================
+# MAIN APP
+# ============================================================================
 
-# Main App
 def main():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🛒 Sentimart</h1>
-        <p>Advanced sentiment analysis using BERT with comprehensive analytics and insights</p>
+        <h1>🛒 Sentimart Advanced</h1>
+        <p>Multi-Source Sentiment Analysis | Files • URLs • Batch Processing</p>
     </div>
     """, unsafe_allow_html=True)
     
     # Load model
     tokenizer, model, model_loaded = load_model()
-    
     if not model_loaded:
-        st.error("⚠️ Model could not be loaded. Please check your model files.")
+        st.error("⚠️ Model could not be loaded.")
         st.stop()
     
     # Sidebar
     with st.sidebar:
-        st.header("📊 Model Information")
-        st.markdown("""
-        <div class="model-info">
-            <h4>BERT-based Classifier</h4>
-            <p><strong>Architecture:</strong> BERT Base</p>
-            <p><strong>Max Length:</strong> 512 tokens</p>
-            <p><strong>Classes:</strong> Positive, Negative</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.header("📊 Dashboard")
+        st.metric("Total Analyses", st.session_state.total_analyses)
         
-        # Model Performance Metrics
-        st.subheader("🎯 Model Performance")
-        metrics = st.session_state.model_metrics
+        st.markdown("---")
+        st.subheader("💡 Quick Tips")
+        st.info("""
+        **URL Analysis:**
+        - YouTube: Paste video URL
+        - Reddit: Paste post URL  
+        - Amazon: Paste product URL
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Accuracy", f"{metrics['accuracy']:.1%}")
-            st.metric("Precision", f"{metrics['precision']:.1%}")
-        with col2:
-            st.metric("Recall", f"{metrics['recall']:.1%}")
-            st.metric("F1-Score", f"{metrics['f1_score']:.1%}")
+        **File Upload:**
+        - CSV with 'review' column
+        - Excel files supported
+        - TXT files with one review per line
+        """)
         
-        st.metric("Total Analyses", metrics['total_analyses'])
-        
-        # Export functionality
-        st.subheader("📥 Export Results")
-        if st.button("Export History"):
-            csv_data = export_results()
-            if csv_data:
-                st.download_button(
-                    label="Download CSV",
-                    data=csv_data,
-                    file_name=f"review_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.info("No analysis history to export")
+        if st.session_state.batch_results is not None:
+            st.markdown("---")
+            st.subheader("📥 Export Results")
+            csv_data = st.session_state.batch_results.to_csv(index=False)
+            st.download_button(
+                "Download CSV",
+                csv_data,
+                file_name=f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
     
-    # Main content area
-    col1, col2 = st.columns([2, 1])
+    # Main tabs
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📝 Single Text", 
+        "🔗 URL Analysis", 
+        "📦 File Upload",
+        "📊 Analytics"
+    ])
     
-    with col1:
-        st.subheader("✍️ Review Input")
+    # ========================================================================
+    # TAB 1: SINGLE TEXT ANALYSIS
+    # ========================================================================
+    with tab1:
+        st.subheader("✍️ Analyze Single Review")
         
-        # Sample reviews dropdown
-        selected_sample = st.selectbox(
-            "Try a sample review:",
-            ["Select a sample..."] + list(SAMPLE_REVIEWS.keys())
+        review_text = st.text_area(
+            "Enter your review:",
+            height=200,
+            placeholder="Paste your review text here...",
+            help="Enter any product review, comment, or feedback"
         )
         
-        # Text input
-        if selected_sample != "Select a sample...":
-            review_text = st.text_area(
-                "Review text:",
-                value=SAMPLE_REVIEWS[selected_sample],
-                height=150,
-                help="Paste your Amazon review here for analysis"
-            )
-        else:
-            review_text = st.text_area(
-                "Review text:",
-                height=150,
-                placeholder="Paste your Amazon review here...",
-                help="Enter the review text you want to analyze"
-            )
-        
-        # Text statistics
         if review_text:
-            features = analyze_text_features(review_text)
-            
-            st.subheader("📝 Text Statistics")
-            stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
-            
-            with stat_col1:
-                st.metric("Words", features['word_count'])
-            with stat_col2:
-                st.metric("Characters", features['char_count'])
-            with stat_col3:
-                st.metric("Sentences", features['sentence_count'])
-            with stat_col4:
-                st.metric("Avg Word Length", f"{features['avg_word_length']:.1f}")
+            word_count = len(review_text.split())
+            char_count = len(review_text)
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Words", word_count)
+            col2.metric("Characters", char_count)
+            col3.metric("Sentences", len(re.findall(r'[.!?]+', review_text)))
         
-        # Analysis button
-        if st.button("🔍 Analyze Review", type="primary", use_container_width=True):
+        if st.button("🔍 Analyze", type="primary", use_container_width=True):
             if not review_text.strip():
-                st.warning("⚠️ Please enter some text to analyze.")
+                st.warning("Please enter some text")
             else:
-                # Show progress
-                with st.spinner("Analyzing with BERT model..."):
-                    time.sleep(1)  # Simulate processing time
-                    
-                    # Perform prediction
+                with st.spinner("Analyzing..."):
                     result = predict_sentiment(review_text, tokenizer, model)
-                    features = analyze_text_features(review_text)
-                    
-                    # Store in history
+                    st.session_state.total_analyses += 1
                     st.session_state.analysis_history.append({
                         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'text': review_text[:100] + "..." if len(review_text) > 100 else review_text,
-                        'label': result['label'],
-                        'confidence': result['confidence'],
-                        'word_count': features['word_count']
+                        'text': review_text[:100],
+                        'sentiment': result['label'],
+                        'confidence': result['confidence']
                     })
-                    
-                    # Update metrics
-                    st.session_state.model_metrics['total_analyses'] += 1
                 
-                # Display results
-                st.subheader("🎯 Analysis Results")
-                
-                # Main result
                 result_class = "result-positive" if result['label'] == "Positive" else "result-negative"
                 emoji = "😊" if result['label'] == "Positive" else "😠"
                 
@@ -334,175 +351,224 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Confidence visualization
                 st.plotly_chart(
                     create_confidence_chart(result['positive_prob'], result['negative_prob']),
                     use_container_width=True
                 )
-                
-                # Detailed metrics
-                st.subheader("📊 Detailed Analysis")
-                
-                detail_col1, detail_col2 = st.columns(2)
-                
-                with detail_col1:
-                    st.markdown("**Probability Scores:**")
-                    st.write(f"• Positive: {result['positive_prob']:.1%}")
-                    st.write(f"• Negative: {result['negative_prob']:.1%}")
-                    
-                with detail_col2:
-                    st.markdown("**Text Characteristics:**")
-                    st.write(f"• Exclamations: {features['exclamation_count']}")
-                    st.write(f"• Questions: {features['question_count']}")
-                    st.write(f"• Caps Ratio: {features['caps_ratio']:.1%}")
     
-    with col2:
-        st.subheader("📈 Analytics Dashboard")
+    # ========================================================================
+    # TAB 2: URL ANALYSIS
+    # ========================================================================
+    with tab2:
+        st.subheader("🔗 Analyze Content from URLs")
+        st.info("📌 Supports: YouTube, Reddit, Amazon (Demo mode - no API keys required)")
         
-        # History chart
-        if st.session_state.analysis_history:
-            history_fig = create_history_chart()
-            if history_fig:
-                st.plotly_chart(history_fig, use_container_width=True)
-            
-            # Recent analyses
-            st.subheader("🕒 Recent Analyses")
-            recent_analyses = st.session_state.analysis_history[-5:]  # Last 5
-            
-            for analysis in reversed(recent_analyses):
-                emoji = "😊" if analysis['label'] == "Positive" else "😠"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <strong>{emoji} {analysis['label']}</strong> ({analysis['confidence']:.1%})<br>
-                    <small>{analysis['text']}</small><br>
-                    <small>📅 {analysis['timestamp']}</small>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("p")
+        url_input = st.text_input(
+            "Enter URL:",
+            placeholder="https://www.youtube.com/watch?v=...",
+            help="Paste any YouTube video, Reddit post, or Amazon product URL"
+        )
         
-        # Replace the batch analysis section (around line 335-375) with this corrected version:
-
-# Batch analysis option
-st.subheader("📦 Batch Analysis")
-uploaded_file = st.file_uploader(
-    "Upload CSV with reviews",
-    type=['csv', 'xlsx'],
-    help="Upload a CSV/Excel file with a 'review' column for batch analysis"
-)
-
-if uploaded_file is not None:
-    try:
-        # Handle both CSV and Excel files
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        elif uploaded_file.name.endswith('.xlsx'):
-            df = pd.read_excel(uploaded_file)
-        else:
-            st.error("Unsupported file format")
-            df = None
+        col1, col2 = st.columns(2)
+        with col1:
+            max_items = st.slider("Items to analyze:", 10, 100, 30)
+        with col2:
+            if url_input:
+                url_type = detect_url_type(url_input)
+                st.info(f"Detected: **{url_type.upper()}**")
         
-        if df is not None:
-            # Check for 'review' column (case-insensitive)
-            review_col = None
-            for col in df.columns:
-                if col.lower() == 'review':
-                    review_col = col
-                    break
-            
-            if review_col:
-                # Filter out empty reviews
-                valid_reviews = df[df[review_col].notna()][review_col]
-                st.write(f"📊 Found {len(valid_reviews)} valid reviews")
+        if st.button("🚀 Fetch & Analyze", type="primary", use_container_width=True):
+            if not url_input:
+                st.warning("Please enter a URL")
+            else:
+                url_type = detect_url_type(url_input)
                 
-                if len(valid_reviews) > 0:
-                    # Limit number of reviews for analysis
-                    max_reviews = min(50, len(valid_reviews))
+                if url_type == 'unknown':
+                    st.error("Unsupported URL. Use YouTube, Reddit, or Amazon URLs.")
+                else:
+                    with st.spinner(f"Fetching {url_type} content..."):
+                        # Demo mode - fetch sample comments
+                        comments = fetch_demo_comments(url_type, max_items)
+                        
+                        if not comments:
+                            st.error("No content found")
+                        else:
+                            st.success(f"✅ Fetched {len(comments)} items")
+                            
+                            # Analyze sentiments
+                            progress_bar = st.progress(0)
+                            results = []
+                            
+                            for i, comment in enumerate(comments):
+                                if len(comment.strip()) > 0:
+                                    result = predict_sentiment(comment, tokenizer, model)
+                                    results.append({
+                                        'text': comment[:80] + "..." if len(comment) > 80 else comment,
+                                        'sentiment': result['label'],
+                                        'confidence': result['confidence']
+                                    })
+                                progress_bar.progress((i + 1) / len(comments))
+                            
+                            if results:
+                                results_df = pd.DataFrame(results)
+                                st.session_state.batch_results = results_df
+                                st.session_state.total_analyses += len(results)
+                                
+                                # Summary metrics
+                                col1, col2, col3, col4 = st.columns(4)
+                                positive = len(results_df[results_df['sentiment'] == 'Positive'])
+                                negative = len(results_df) - positive
+                                avg_conf = results_df['confidence'].mean()
+                                
+                                col1.metric("Total", len(results_df))
+                                col2.metric("✅ Positive", positive)
+                                col3.metric("❌ Negative", negative)
+                                col4.metric("Avg Confidence", f"{avg_conf:.1%}")
+                                
+                                # Visualizations
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.plotly_chart(create_batch_distribution_chart(results_df), use_container_width=True)
+                                with col2:
+                                    st.plotly_chart(create_confidence_histogram(results_df), use_container_width=True)
+                                
+                                # Show results table
+                                st.subheader("📋 Detailed Results")
+                                st.dataframe(results_df, use_container_width=True)
+    
+    # ========================================================================
+    # TAB 3: FILE UPLOAD
+    # ========================================================================
+    with tab3:
+        st.subheader("📦 Batch File Analysis")
+        st.info("📌 Supported: CSV, Excel, TXT, JSON")
+        
+        uploaded_file = st.file_uploader(
+            "Upload your file:",
+            type=['csv', 'xlsx', 'xls', 'txt', 'json'],
+            help="CSV/Excel: Must have 'review' column | TXT: One review per line"
+        )
+        
+        if uploaded_file is not None:
+            content, file_type = read_file_content(uploaded_file)
+            
+            if file_type == 'dataframe':
+                st.success(f"✅ Loaded: {len(content)} rows")
+                st.dataframe(content.head(), use_container_width=True)
+                
+                # Find review column
+                review_col = None
+                for col in content.columns:
+                    if col.lower() in ['review', 'text', 'comment', 'feedback']:
+                        review_col = col
+                        break
+                
+                if review_col:
+                    st.info(f"Using column: **{review_col}**")
                     
-                    if st.button("Analyze All Reviews"):
+                    if st.button("▶️ Analyze All", type="primary", use_container_width=True):
+                        valid_reviews = content[content[review_col].notna()][review_col]
+                        max_reviews = min(200, len(valid_reviews))
+                        
                         progress_bar = st.progress(0)
-                        status_text = st.empty()
                         results = []
                         
                         for i, review in enumerate(valid_reviews.head(max_reviews)):
-                            try:
-                                status_text.text(f"Analyzing review {i+1}/{max_reviews}...")
-                                
-                                # Convert to string and check length
-                                review_text = str(review).strip()
-                                
-                                if len(review_text) > 0:
-                                    result = predict_sentiment(review_text, tokenizer, model)
-                                    results.append({
-                                        'review': review_text[:50] + "..." if len(review_text) > 50 else review_text,
-                                        'sentiment': result['label'],
-                                        'confidence': f"{result['confidence']:.1%}"
-                                    })
-                                    
-                                    # Update session history
-                                    st.session_state.analysis_history.append({
-                                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                                        'text': review_text[:100] + "..." if len(review_text) > 100 else review_text,
-                                        'label': result['label'],
-                                        'confidence': result['confidence'],
-                                        'word_count': len(review_text.split())
-                                    })
-                                    
-                            except Exception as e:
-                                st.warning(f"Error analyzing review {i+1}: {str(e)}")
-                                continue
-                            
-                            # Update progress
+                            text = str(review).strip()
+                            if len(text) > 0:
+                                result = predict_sentiment(text, tokenizer, model)
+                                results.append({
+                                    'review': text[:60] + "..." if len(text) > 60 else text,
+                                    'sentiment': result['label'],
+                                    'confidence': result['confidence']
+                                })
                             progress_bar.progress((i + 1) / max_reviews)
                         
-                        status_text.text("Analysis complete!")
-                        
                         if results:
-                            # Display batch results
                             results_df = pd.DataFrame(results)
+                            st.session_state.batch_results = results_df
+                            st.session_state.total_analyses += len(results)
+                            
+                            st.success(f"✅ Analyzed {len(results)} reviews")
+                            
+                            # Summary
+                            col1, col2, col3 = st.columns(3)
+                            positive = len(results_df[results_df['sentiment'] == 'Positive'])
+                            col1.metric("Total", len(results_df))
+                            col2.metric("✅ Positive", positive)
+                            col3.metric("❌ Negative", len(results_df) - positive)
+                            
+                            # Chart
+                            st.plotly_chart(create_batch_distribution_chart(results_df), use_container_width=True)
+                            
+                            # Results table
                             st.dataframe(results_df, use_container_width=True)
-                            
-                            # Summary statistics
-                            positive_count = len([r for r in results if r['sentiment'] == 'Positive'])
-                            negative_count = len(results) - positive_count
-                            
-                            summary_col1, summary_col2, summary_col3 = st.columns(3)
-                            with summary_col1:
-                                st.metric("Total Analyzed", len(results))
-                            with summary_col2:
-                                st.metric("✅ Positive", positive_count)
-                            with summary_col3:
-                                st.metric("❌ Negative", negative_count)
-                            
-                            # Update total analyses counter
-                            st.session_state.model_metrics['total_analyses'] += len(results)
-                            
-                            # Download results
-                            csv_output = results_df.to_csv(index=False)
-                            st.download_button(
-                                label="📥 Download Results",
-                                data=csv_output,
-                                file_name=f"batch_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                mime="text/csv"
-                            )
-                        else:
-                            st.warning("No reviews could be analyzed. Please check your data.")
                 else:
-                    st.info("No valid reviews found in the uploaded file.")
-            else:
-                st.error("❌ CSV must contain a 'review' column (case-insensitive)")
-                st.info(f"Available columns: {', '.join(df.columns.tolist())}")
+                    st.error("No review column found. Please ensure your file has a 'review', 'text', or 'comment' column.")
+                    st.write("Available columns:", list(content.columns))
+            
+            elif file_type == 'text':
+                reviews = [line.strip() for line in content.split('\n') if line.strip()]
+                st.success(f"✅ Found {len(reviews)} reviews")
                 
-    except Exception as e:
-        st.error(f"❌ Error processing file: {str(e)}")
-        st.info("Please ensure your file is properly formatted and not corrupted.")
+                if st.button("▶️ Analyze All", type="primary"):
+                    progress_bar = st.progress(0)
+                    results = []
+                    
+                    for i, review in enumerate(reviews[:200]):
+                        result = predict_sentiment(review, tokenizer, model)
+                        results.append({
+                            'review': review[:60] + "..." if len(review) > 60 else review,
+                            'sentiment': result['label'],
+                            'confidence': result['confidence']
+                        })
+                        progress_bar.progress((i + 1) / min(len(reviews), 200))
+                    
+                    results_df = pd.DataFrame(results)
+                    st.session_state.batch_results = results_df
+                    st.session_state.total_analyses += len(results)
+                    
+                    st.dataframe(results_df, use_container_width=True)
+    
+    # ========================================================================
+    # TAB 4: ANALYTICS
+    # ========================================================================
+    with tab4:
+        st.subheader("📊 Analytics Dashboard")
+        
+        if st.session_state.analysis_history:
+            history_df = pd.DataFrame(st.session_state.analysis_history)
+            
+            col1, col2, col3 = st.columns(3)
+            total = len(history_df)
+            positive = len(history_df[history_df['sentiment'] == 'Positive'])
+            avg_conf = history_df['confidence'].mean()
+            
+            col1.metric("Total Analyses", total)
+            col2.metric("Positive Rate", f"{positive/total:.1%}")
+            col3.metric("Avg Confidence", f"{avg_conf:.1%}")
+            
+            # Recent history
+            st.subheader("🕒 Recent Analyses")
+            recent = history_df.tail(10).sort_values('timestamp', ascending=False)
+            
+            for _, row in recent.iterrows():
+                emoji = "😊" if row['sentiment'] == "Positive" else "😠"
+                st.markdown(f"""
+                <div class="metric-card">
+                    <strong>{emoji} {row['sentiment']}</strong> ({row['confidence']:.1%})<br>
+                    <small>{row['text']}...</small><br>
+                    <small>📅 {row['timestamp']}</small>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No analysis history yet. Start analyzing to see statistics!")
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; padding: 1rem;">
-        🤖 Powered by BERT |An AI-powered sentiment analyzer designed for product review insights | 
-        <a href="https://github.com" target="_blank">View Source Code</a>
+        🤖 Powered by BERT | Advanced Multi-Source Sentiment Analyzer
     </div>
     """, unsafe_allow_html=True)
 
