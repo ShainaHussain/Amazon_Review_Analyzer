@@ -1,25 +1,57 @@
+"""
+Sentimart Pro - Advanced Multi-Source Sentiment Analysis
+Features:
+- Real API integration (YouTube)
+- PDF support
+- Word clouds
+- Emotion detection
+- Multi-language support
+"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 import torch
 import torch.nn.functional as F
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
-import time
 import re
 from urllib.parse import urlparse, parse_qs
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from collections import Counter
+
+# Optional imports with error handling
+try:
+    import PyPDF2
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+    st.warning("⚠️ Install PyPDF2 for PDF support: pip install PyPDF2")
+
+try:
+    from googleapiclient.discovery import build
+    YOUTUBE_API_AVAILABLE = True
+except ImportError:
+    YOUTUBE_API_AVAILABLE = False
+
+try:
+    from langdetect import detect
+    LANG_DETECT_AVAILABLE = True
+except ImportError:
+    LANG_DETECT_AVAILABLE = False
 
 # Page config
 st.set_page_config(
-    page_title="Sentimart Advanced",
+    page_title="Sentimart Pro",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with gradient theme
+# CSS Styling
 st.markdown("""
 <style>
     .main-header {
@@ -52,15 +84,25 @@ st.markdown("""
         border-radius: 12px;
         border-left: 5px solid #dc3545;
     }
+    .emotion-badge {
+        display: inline-block;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        margin: 0.2rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: #e3f2fd;
+        color: #1976d2;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# MODEL & SESSION STATE
+# MODEL LOADING
 # ============================================================================
 
 @st.cache_resource
-def load_model():
+def load_sentiment_model():
     try:
         tokenizer = AutoTokenizer.from_pretrained("model")
         model = AutoModelForSequenceClassification.from_pretrained("model")
@@ -68,6 +110,32 @@ def load_model():
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
         return None, None, False
+
+@st.cache_resource
+def load_emotion_model():
+    try:
+        emotion_classifier = pipeline(
+            "text-classification",
+            model="j-hartmann/emotion-english-distilroberta-base",
+            return_all_scores=True,
+            device=-1  # CPU
+        )
+        return emotion_classifier, True
+    except Exception as e:
+        return None, False
+
+@st.cache_resource
+def load_multilingual_model():
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
+        model = AutoModelForSequenceClassification.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
+        return tokenizer, model, True
+    except Exception as e:
+        return None, None, False
+
+# ============================================================================
+# SESSION STATE
+# ============================================================================
 
 if 'analysis_history' not in st.session_state:
     st.session_state.analysis_history = []
@@ -77,7 +145,7 @@ if 'total_analyses' not in st.session_state:
     st.session_state.total_analyses = 0
 
 # ============================================================================
-# UTILITY FUNCTIONS
+# PREDICTION FUNCTIONS
 # ============================================================================
 
 def predict_sentiment(text, tokenizer, model):
@@ -87,166 +155,171 @@ def predict_sentiment(text, tokenizer, model):
         probs = F.softmax(outputs.logits, dim=1)
         pred_class = torch.argmax(probs, dim=1).item()
         confidence = probs[0][pred_class].item()
-        positive_prob = probs[0][1].item()
+        positive_prob = probs[0][1].item() if probs.shape[1] > 1 else 0
         negative_prob = probs[0][0].item()
     
     return {
-        'prediction': pred_class,
+        'label': "Positive" if pred_class == 1 else "Negative",
         'confidence': confidence,
         'positive_prob': positive_prob,
-        'negative_prob': negative_prob,
-        'label': "Positive" if pred_class == 1 else "Negative"
+        'negative_prob': negative_prob
     }
 
-def detect_url_type(url):
-    url_lower = url.lower()
-    if 'youtube.com' in url_lower or 'youtu.be' in url_lower:
-        return 'youtube'
-    elif 'reddit.com' in url_lower:
-        return 'reddit'
-    elif 'amazon' in url_lower:
-        return 'amazon'
-    return 'unknown'
+def predict_emotions(text, emotion_classifier):
+    try:
+        results = emotion_classifier(text[:512])[0]
+        emotions = {item['label']: item['score'] for item in results}
+        top_emotion = max(emotions.items(), key=lambda x: x[1])
+        return {'emotions': emotions, 'top_emotion': top_emotion[0], 'top_score': top_emotion[1]}
+    except:
+        return None
+
+def predict_multilingual(text, tokenizer, model):
+    try:
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            probs = F.softmax(outputs.logits, dim=1)
+            rating = torch.argmax(probs, dim=1).item() + 1
+        label = "Positive" if rating >= 4 else "Negative" if rating <= 2 else "Neutral"
+        return {'rating': rating, 'label': label, 'confidence': probs[0][rating-1].item()}
+    except:
+        return None
+
+def detect_language(text):
+    if not LANG_DETECT_AVAILABLE:
+        return 'en'
+    try:
+        return detect(text)
+    except:
+        return 'en'
+
+# ============================================================================
+# API EXTRACTION FUNCTIONS
+# ============================================================================
 
 def extract_youtube_video_id(url):
-    parsed_url = urlparse(url)
-    if parsed_url.hostname == 'youtu.be':
-        return parsed_url.path[1:]
-    if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
-        if parsed_url.path == '/watch':
-            return parse_qs(parsed_url.query).get('v', [None])[0]
+    parsed = urlparse(url)
+    if parsed.hostname == 'youtu.be':
+        return parsed.path[1:]
+    if parsed.hostname in ('www.youtube.com', 'youtube.com'):
+        if parsed.path == '/watch':
+            return parse_qs(parsed.query).get('v', [None])[0]
     return None
 
-def fetch_demo_comments(platform, count=50):
-    """Generate demo comments for different platforms"""
-    youtube_comments = [
-        "This video is absolutely amazing! Great content and very informative.",
-        "Thanks for sharing this. Really helpful tutorial!",
-        "Not sure about this approach. Seems too complicated for beginners.",
-        "Excellent explanation! Subscribed!",
-        "Could you make a follow-up video on advanced topics?",
-        "This didn't work for me. Getting errors.",
-        "Best tutorial on this topic I've found. Thank you!",
-        "The quality could be better but good content overall.",
-        "Waste of time. Nothing new here.",
-        "Perfect timing! I was just looking for this information.",
-    ]
+def fetch_youtube_comments(video_url, api_key, max_results=50):
+    if not YOUTUBE_API_AVAILABLE or not api_key:
+        # Demo mode
+        return [
+            {"text": "This video is amazing! Really helpful content.", "author": "User1"},
+            {"text": "Thanks for sharing. Learned a lot!", "author": "User2"},
+            {"text": "Not sure about this. Needs more explanation.", "author": "User3"},
+            {"text": "Excellent tutorial! Subscribed!", "author": "User4"},
+            {"text": "Didn't work for me. Got errors.", "author": "User5"},
+        ][:max_results], "demo"
     
-    reddit_comments = [
-        "This is exactly what I needed! Thanks for posting.",
-        "Not convinced this is the best approach.",
-        "Can confirm, this worked perfectly for me!",
-        "Terrible advice. Please don't follow this.",
-        "Great post! Saved for later reference.",
-        "Has anyone else tried this? Results?",
-        "This should be upvoted more. Quality content.",
-        "Downvoted. This is misleading information.",
-    ]
-    
-    amazon_reviews = [
-        "Amazing product! Exceeded my expectations in every way.",
-        "Good quality for the price. Would recommend.",
-        "Decent product but shipping was slow.",
-        "Not as described. Very disappointed.",
-        "Terrible quality. Broke after one use.",
-        "Exactly what I was looking for! Fast shipping too.",
-        "Works well but instructions could be clearer.",
-        "Five stars! Best purchase this year.",
-        "Returned it. Complete waste of money.",
-        "Perfect for my needs. Happy with purchase.",
-    ]
-    
-    if platform == 'youtube':
-        return youtube_comments[:count]
-    elif platform == 'reddit':
-        return reddit_comments[:count]
-    elif platform == 'amazon':
-        return amazon_reviews[:count]
-    return []
-
-def read_file_content(uploaded_file):
-    """Read content from uploaded files"""
     try:
-        file_extension = uploaded_file.name.split('.')[-1].lower()
+        video_id = extract_youtube_video_id(video_url)
+        if not video_id:
+            return None, "Invalid URL"
         
-        if file_extension == 'csv':
-            df = pd.read_csv(uploaded_file)
-            return df, 'dataframe'
+        youtube = build('youtube', 'v3', developerKey=api_key)
+        request = youtube.commentThreads().list(
+            part="snippet",
+            videoId=video_id,
+            maxResults=min(max_results, 100),
+            textFormat="plainText"
+        )
+        response = request.execute()
         
-        elif file_extension in ['xlsx', 'xls']:
-            df = pd.read_excel(uploaded_file)
-            return df, 'dataframe'
-        
-        elif file_extension == 'txt':
-            content = uploaded_file.read().decode('utf-8')
-            return content, 'text'
-        
-        elif file_extension == 'json':
-            content = uploaded_file.read().decode('utf-8')
-            import json
-            data = json.loads(content)
-            return data, 'json'
-        
-        else:
-            return None, 'unsupported'
-            
+        comments = []
+        for item in response['items']:
+            comment = item['snippet']['topLevelComment']['snippet']
+            comments.append({
+                'text': comment['textDisplay'],
+                'author': comment['authorDisplayName'],
+                'likes': comment['likeCount']
+            })
+        return comments, "api"
     except Exception as e:
-        st.error(f"Error reading file: {str(e)}")
-        return None, 'error'
+        return None, str(e)
 
 # ============================================================================
-# VISUALIZATION FUNCTIONS
+# FILE READING
 # ============================================================================
 
-def create_confidence_chart(positive_prob, negative_prob):
+def read_pdf(file):
+    if not PDF_AVAILABLE:
+        return None, "PyPDF2 not installed"
+    try:
+        pdf = PyPDF2.PdfReader(file)
+        text = ""
+        for page in pdf.pages:
+            text += page.extract_text() + "\n"
+        paragraphs = [p.strip() for p in text.split('\n') if len(p.strip()) > 20]
+        return paragraphs, None
+    except Exception as e:
+        return None, str(e)
+
+def read_file(uploaded_file):
+    ext = uploaded_file.name.split('.')[-1].lower()
+    
+    try:
+        if ext == 'csv':
+            return pd.read_csv(uploaded_file), 'dataframe', None
+        elif ext in ['xlsx', 'xls']:
+            return pd.read_excel(uploaded_file), 'dataframe', None
+        elif ext == 'txt':
+            content = uploaded_file.read().decode('utf-8')
+            lines = [l.strip() for l in content.split('\n') if l.strip()]
+            return lines, 'text', None
+        elif ext == 'pdf':
+            paragraphs, error = read_pdf(uploaded_file)
+            return paragraphs, 'text' if paragraphs else 'error', error
+        else:
+            return None, 'unsupported', "Unsupported format"
+    except Exception as e:
+        return None, 'error', str(e)
+
+# ============================================================================
+# VISUALIZATIONS
+# ============================================================================
+
+def create_confidence_chart(pos, neg):
     fig = go.Figure(data=[
-        go.Bar(
-            x=['Negative', 'Positive'],
-            y=[negative_prob, positive_prob],
-            marker_color=['#ff6b6b', '#51cf66'],
-            text=[f'{negative_prob:.1%}', f'{positive_prob:.1%}'],
-            textposition='auto',
-        )
+        go.Bar(x=['Negative', 'Positive'], y=[neg, pos],
+               marker_color=['#ff6b6b', '#51cf66'],
+               text=[f'{neg:.1%}', f'{pos:.1%}'], textposition='auto')
     ])
-    fig.update_layout(
-        title="Sentiment Confidence Scores",
-        xaxis_title="Sentiment",
-        yaxis_title="Probability",
-        yaxis=dict(tickformat='.0%'),
-        height=350,
-        showlegend=False
-    )
+    fig.update_layout(title="Confidence", height=300, showlegend=False, yaxis=dict(tickformat='.0%'))
     return fig
 
-def create_batch_distribution_chart(results_df):
-    sentiment_counts = results_df['sentiment'].value_counts()
+def create_emotion_chart(emotions):
+    names = list(emotions.keys())
+    scores = list(emotions.values())
     fig = go.Figure(data=[
-        go.Pie(
-            labels=sentiment_counts.index,
-            values=sentiment_counts.values,
-            hole=0.4,
-            marker_colors=['#51cf66' if label == 'Positive' else '#ff6b6b' 
-                          for label in sentiment_counts.index]
-        )
+        go.Bar(x=names, y=scores, marker_color='#667eea',
+               text=[f'{s:.1%}' for s in scores], textposition='auto')
     ])
-    fig.update_layout(title="Sentiment Distribution", height=350)
+    fig.update_layout(title="Emotions", height=300, yaxis=dict(tickformat='.0%'))
     return fig
 
-def create_confidence_histogram(results_df):
-    fig = go.Figure(data=[
-        go.Histogram(
-            x=results_df['confidence'],
-            nbinsx=20,
-            marker_color='#667eea',
-            opacity=0.7
-        )
-    ])
-    fig.update_layout(
-        title="Confidence Distribution",
-        xaxis_title="Confidence Score",
-        yaxis_title="Count",
-        height=350
-    )
+def create_wordcloud(texts, sentiment=None):
+    text = " ".join(texts)
+    if not text.strip():
+        return None
+    colormap = 'Greens' if sentiment == 'positive' else 'Reds' if sentiment == 'negative' else 'viridis'
+    wc = WordCloud(width=800, height=400, background_color='white', colormap=colormap).generate(text)
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.imshow(wc, interpolation='bilinear')
+    ax.axis('off')
+    return fig
+
+def create_distribution_pie(df):
+    counts = df['sentiment'].value_counts()
+    colors = ['#51cf66' if l == 'Positive' else '#ff6b6b' for l in counts.index]
+    fig = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.4, marker_colors=colors)])
+    fig.update_layout(title="Distribution", height=300)
     return fig
 
 # ============================================================================
@@ -254,323 +327,260 @@ def create_confidence_histogram(results_df):
 # ============================================================================
 
 def main():
-    # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🛒 Sentimart Advanced</h1>
-        <p>Multi-Source Sentiment Analysis | Files • URLs • Batch Processing</p>
+        <h1>🛒 Sentimart Pro</h1>
+        <p>Advanced Multi-Source Sentiment & Emotion Analysis</p>
+        <p style="font-size:0.85em;opacity:0.9">✨ YouTube API • 📄 PDF • ☁️ Word Clouds • 😊 Emotions • 🌍 Multi-Language</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Load model
-    tokenizer, model, model_loaded = load_model()
-    if not model_loaded:
-        st.error("⚠️ Model could not be loaded.")
+    # Load models
+    tokenizer, model, loaded = load_sentiment_model()
+    emotion_clf, emotion_ok = load_emotion_model()
+    ml_tok, ml_model, ml_ok = load_multilingual_model()
+    
+    if not loaded:
+        st.error("⚠️ Model failed to load")
         st.stop()
     
     # Sidebar
     with st.sidebar:
-        st.header("📊 Dashboard")
+        st.header("⚙️ Configuration")
+        
+        with st.expander("🔑 API Keys"):
+            youtube_key = st.text_input("AIzaSyBH2RJD9X-lBWdbN34_pIvd14WtfbYSftI", type="password", help="Optional for real data")
+        
+        with st.expander("🤖 Models"):
+            st.write("Sentiment:", "✅" if loaded else "❌")
+            st.write("Emotion:", "✅" if emotion_ok else "❌")
+            st.write("Multilingual:", "✅" if ml_ok else "❌")
+            st.write("PDF:", "✅" if PDF_AVAILABLE else "❌")
+        
         st.metric("Total Analyses", st.session_state.total_analyses)
         
-        st.markdown("---")
-        st.subheader("💡 Quick Tips")
-        st.info("""
-        **URL Analysis:**
-        - YouTube: Paste video URL
-        - Reddit: Paste post URL  
-        - Amazon: Paste product URL
-        
-        **File Upload:**
-        - CSV with 'review' column
-        - Excel files supported
-        - TXT files with one review per line
-        """)
-        
         if st.session_state.batch_results is not None:
-            st.markdown("---")
-            st.subheader("📥 Export Results")
-            csv_data = st.session_state.batch_results.to_csv(index=False)
-            st.download_button(
-                "Download CSV",
-                csv_data,
-                file_name=f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
+            csv = st.session_state.batch_results.to_csv(index=False)
+            st.download_button("📥 Download CSV", csv, 
+                             f"results_{datetime.now():%Y%m%d_%H%M%S}.csv", "text/csv")
     
-    # Main tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📝 Single Text", 
-        "🔗 URL Analysis", 
-        "📦 File Upload",
-        "📊 Analytics"
-    ])
+    # Tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Single", "🔗 YouTube", "📦 File", "📊 Analytics"])
     
-    # ========================================================================
-    # TAB 1: SINGLE TEXT ANALYSIS
-    # ========================================================================
+    # TAB 1: Single Analysis
     with tab1:
-        st.subheader("✍️ Analyze Single Review")
+        st.subheader("✍️ Single Text Analysis")
         
-        review_text = st.text_area(
-            "Enter your review:",
-            height=200,
-            placeholder="Paste your review text here...",
-            help="Enter any product review, comment, or feedback"
-        )
+        text = st.text_area("Enter text:", height=150, placeholder="Your review here...")
         
-        if review_text:
-            word_count = len(review_text.split())
-            char_count = len(review_text)
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Words", word_count)
-            col2.metric("Characters", char_count)
-            col3.metric("Sentences", len(re.findall(r'[.!?]+', review_text)))
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            do_emotion = st.checkbox("Emotions", value=emotion_ok)
+        with col2:
+            do_ml = st.checkbox("Multi-lang", value=ml_ok)
+        with col3:
+            show_wc = st.checkbox("Word cloud", value=False)
         
         if st.button("🔍 Analyze", type="primary", use_container_width=True):
-            if not review_text.strip():
-                st.warning("Please enter some text")
+            if not text.strip():
+                st.warning("Enter text")
             else:
                 with st.spinner("Analyzing..."):
-                    result = predict_sentiment(review_text, tokenizer, model)
+                    result = predict_sentiment(text, tokenizer, model)
+                    lang = detect_language(text)
+                    
+                    emotion_res = predict_emotions(text, emotion_clf) if do_emotion and emotion_ok else None
+                    ml_res = predict_multilingual(text, ml_tok, ml_model) if do_ml and ml_ok and lang != 'en' else None
+                    
                     st.session_state.total_analyses += 1
                     st.session_state.analysis_history.append({
-                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'text': review_text[:100],
-                        'sentiment': result['label'],
-                        'confidence': result['confidence']
+                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        'text': text[:80], 'sentiment': result['label'],
+                        'confidence': result['confidence'], 'language': lang
                     })
                 
-                result_class = "result-positive" if result['label'] == "Positive" else "result-negative"
+                cls = "result-positive" if result['label'] == "Positive" else "result-negative"
                 emoji = "😊" if result['label'] == "Positive" else "😠"
                 
                 st.markdown(f"""
-                <div class="{result_class}">
-                    <h3>{emoji} Sentiment: {result['label']}</h3>
-                    <p><strong>Confidence:</strong> {result['confidence']:.1%}</p>
+                <div class="{cls}">
+                    <h3>{emoji} {result['label']}</h3>
+                    <p><strong>Confidence:</strong> {result['confidence']:.1%} | <strong>Language:</strong> {lang.upper()}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.plotly_chart(
-                    create_confidence_chart(result['positive_prob'], result['negative_prob']),
-                    use_container_width=True
-                )
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.plotly_chart(create_confidence_chart(result['positive_prob'], result['negative_prob']), use_container_width=True)
+                
+                if emotion_res:
+                    with col2:
+                        st.plotly_chart(create_emotion_chart(emotion_res['emotions']), use_container_width=True)
+                
+                if ml_res:
+                    st.info(f"🌍 Multilingual: {ml_res['label']} ({ml_res['rating']}/5) - {ml_res['confidence']:.1%}")
+                
+                if show_wc:
+                    wc = create_wordcloud([text])
+                    if wc:
+                        st.pyplot(wc)
     
-    # ========================================================================
-    # TAB 2: URL ANALYSIS
-    # ========================================================================
+    # TAB 2: YouTube Analysis
     with tab2:
-        st.subheader("🔗 Analyze Content from URLs")
-        st.info("📌 Supports: YouTube, Reddit, Amazon (Demo mode - no API keys required)")
+        st.subheader("🔗 YouTube Comments Analysis")
         
-        url_input = st.text_input(
-            "Enter URL:",
-            placeholder="https://www.youtube.com/watch?v=...",
-            help="Paste any YouTube video, Reddit post, or Amazon product URL"
-        )
+        url = st.text_input("YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
         
         col1, col2 = st.columns(2)
         with col1:
-            max_items = st.slider("Items to analyze:", 10, 100, 30)
+            max_items = st.slider("Max comments:", 10, 100, 30)
         with col2:
-            if url_input:
-                url_type = detect_url_type(url_input)
-                st.info(f"Detected: **{url_type.upper()}**")
+            show_wc_url = st.checkbox("Word cloud", value=True, key="wc_url")
         
-        if st.button("🚀 Fetch & Analyze", type="primary", use_container_width=True):
-            if not url_input:
-                st.warning("Please enter a URL")
+        if st.button("🚀 Fetch & Analyze", type="primary"):
+            if not url:
+                st.warning("Enter YouTube URL")
+            elif 'youtube' not in url and 'youtu.be' not in url:
+                st.error("Please enter a valid YouTube URL")
             else:
-                url_type = detect_url_type(url_input)
-                
-                if url_type == 'unknown':
-                    st.error("Unsupported URL. Use YouTube, Reddit, or Amazon URLs.")
-                else:
-                    with st.spinner(f"Fetching {url_type} content..."):
-                        # Demo mode - fetch sample comments
-                        comments = fetch_demo_comments(url_type, max_items)
-                        
-                        if not comments:
-                            st.error("No content found")
-                        else:
-                            st.success(f"✅ Fetched {len(comments)} items")
-                            
-                            # Analyze sentiments
-                            progress_bar = st.progress(0)
-                            results = []
-                            
-                            for i, comment in enumerate(comments):
-                                if len(comment.strip()) > 0:
-                                    result = predict_sentiment(comment, tokenizer, model)
-                                    results.append({
-                                        'text': comment[:80] + "..." if len(comment) > 80 else comment,
-                                        'sentiment': result['label'],
-                                        'confidence': result['confidence']
-                                    })
-                                progress_bar.progress((i + 1) / len(comments))
-                            
-                            if results:
-                                results_df = pd.DataFrame(results)
-                                st.session_state.batch_results = results_df
-                                st.session_state.total_analyses += len(results)
-                                
-                                # Summary metrics
-                                col1, col2, col3, col4 = st.columns(4)
-                                positive = len(results_df[results_df['sentiment'] == 'Positive'])
-                                negative = len(results_df) - positive
-                                avg_conf = results_df['confidence'].mean()
-                                
-                                col1.metric("Total", len(results_df))
-                                col2.metric("✅ Positive", positive)
-                                col3.metric("❌ Negative", negative)
-                                col4.metric("Avg Confidence", f"{avg_conf:.1%}")
-                                
-                                # Visualizations
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    st.plotly_chart(create_batch_distribution_chart(results_df), use_container_width=True)
-                                with col2:
-                                    st.plotly_chart(create_confidence_histogram(results_df), use_container_width=True)
-                                
-                                # Show results table
-                                st.subheader("📋 Detailed Results")
-                                st.dataframe(results_df, use_container_width=True)
-    
-    # ========================================================================
-    # TAB 3: FILE UPLOAD
-    # ========================================================================
-    with tab3:
-        st.subheader("📦 Batch File Analysis")
-        st.info("📌 Supported: CSV, Excel, TXT, JSON")
-        
-        uploaded_file = st.file_uploader(
-            "Upload your file:",
-            type=['csv', 'xlsx', 'xls', 'txt', 'json'],
-            help="CSV/Excel: Must have 'review' column | TXT: One review per line"
-        )
-        
-        if uploaded_file is not None:
-            content, file_type = read_file_content(uploaded_file)
-            
-            if file_type == 'dataframe':
-                st.success(f"✅ Loaded: {len(content)} rows")
-                st.dataframe(content.head(), use_container_width=True)
-                
-                # Find review column
-                review_col = None
-                for col in content.columns:
-                    if col.lower() in ['review', 'text', 'comment', 'feedback']:
-                        review_col = col
-                        break
-                
-                if review_col:
-                    st.info(f"Using column: **{review_col}**")
+                with st.spinner("Fetching YouTube comments..."):
+                    comments, mode = fetch_youtube_comments(url, youtube_key if 'youtube_key' in locals() else None, max_items)
                     
-                    if st.button("▶️ Analyze All", type="primary", use_container_width=True):
-                        valid_reviews = content[content[review_col].notna()][review_col]
-                        max_reviews = min(200, len(valid_reviews))
+                    if isinstance(mode, str) and mode in ['demo', 'api']:
+                        st.info(f"Mode: {mode.upper()}")
+                    else:
+                        st.error(f"Error: {mode}")
+                        st.stop()
+                    
+                    if comments:
+                        st.success(f"✅ Fetched {len(comments)} comments")
                         
-                        progress_bar = st.progress(0)
                         results = []
-                        
-                        for i, review in enumerate(valid_reviews.head(max_reviews)):
-                            text = str(review).strip()
-                            if len(text) > 0:
-                                result = predict_sentiment(text, tokenizer, model)
+                        prog = st.progress(0)
+                        for i, c in enumerate(comments):
+                            if c['text']:
+                                r = predict_sentiment(c['text'], tokenizer, model)
                                 results.append({
-                                    'review': text[:60] + "..." if len(text) > 60 else text,
-                                    'sentiment': result['label'],
-                                    'confidence': result['confidence']
+                                    'text': c['text'][:70],
+                                    'sentiment': r['label'],
+                                    'confidence': r['confidence'],
+                                    'author': c.get('author', 'Unknown')
                                 })
-                            progress_bar.progress((i + 1) / max_reviews)
+                            prog.progress((i+1)/len(comments))
                         
                         if results:
-                            results_df = pd.DataFrame(results)
-                            st.session_state.batch_results = results_df
+                            df = pd.DataFrame(results)
+                            st.session_state.batch_results = df
                             st.session_state.total_analyses += len(results)
                             
-                            st.success(f"✅ Analyzed {len(results)} reviews")
-                            
-                            # Summary
                             col1, col2, col3 = st.columns(3)
-                            positive = len(results_df[results_df['sentiment'] == 'Positive'])
-                            col1.metric("Total", len(results_df))
-                            col2.metric("✅ Positive", positive)
-                            col3.metric("❌ Negative", len(results_df) - positive)
+                            pos = len(df[df['sentiment']=='Positive'])
+                            col1.metric("Total", len(df))
+                            col2.metric("Positive", pos)
+                            col3.metric("Negative", len(df)-pos)
                             
-                            # Chart
-                            st.plotly_chart(create_batch_distribution_chart(results_df), use_container_width=True)
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.plotly_chart(create_distribution_pie(df), use_container_width=True)
                             
-                            # Results table
-                            st.dataframe(results_df, use_container_width=True)
-                else:
-                    st.error("No review column found. Please ensure your file has a 'review', 'text', or 'comment' column.")
-                    st.write("Available columns:", list(content.columns))
-            
-            elif file_type == 'text':
-                reviews = [line.strip() for line in content.split('\n') if line.strip()]
-                st.success(f"✅ Found {len(reviews)} reviews")
-                
-                if st.button("▶️ Analyze All", type="primary"):
-                    progress_bar = st.progress(0)
-                    results = []
-                    
-                    for i, review in enumerate(reviews[:200]):
-                        result = predict_sentiment(review, tokenizer, model)
-                        results.append({
-                            'review': review[:60] + "..." if len(review) > 60 else review,
-                            'sentiment': result['label'],
-                            'confidence': result['confidence']
-                        })
-                        progress_bar.progress((i + 1) / min(len(reviews), 200))
-                    
-                    results_df = pd.DataFrame(results)
-                    st.session_state.batch_results = results_df
-                    st.session_state.total_analyses += len(results)
-                    
-                    st.dataframe(results_df, use_container_width=True)
+                            if show_wc_url:
+                                with col2:
+                                    wc = create_wordcloud(df['text'].tolist())
+                                    if wc:
+                                        st.pyplot(wc)
+                            
+                            st.dataframe(df, use_container_width=True)
     
-    # ========================================================================
-    # TAB 4: ANALYTICS
-    # ========================================================================
+    # TAB 3: File Upload
+    with tab3:
+        st.subheader("📦 Batch File Analysis")
+        st.info("Supports: CSV, Excel, TXT, PDF")
+        
+        file = st.file_uploader("Upload file:", type=['csv', 'xlsx', 'txt', 'pdf'])
+        
+        if file:
+            content, ftype, error = read_file(file)
+            
+            if error:
+                st.error(error)
+            elif ftype == 'dataframe':
+                st.success(f"Loaded {len(content)} rows")
+                st.dataframe(content.head(), use_container_width=True)
+                
+                col = None
+                for c in content.columns:
+                    if c.lower() in ['review', 'text', 'comment']:
+                        col = c
+                        break
+                
+                if col:
+                    st.info(f"Using column: **{col}**")
+                    
+                    if st.button("▶️ Analyze All", type="primary"):
+                        valid = content[content[col].notna()][col]
+                        results = []
+                        prog = st.progress(0)
+                        
+                        for i, txt in enumerate(valid.head(200)):
+                            r = predict_sentiment(str(txt), tokenizer, model)
+                            results.append({'review': str(txt)[:50], 'sentiment': r['label'], 
+                                          'confidence': r['confidence']})
+                            prog.progress((i+1)/min(len(valid), 200))
+                        
+                        df = pd.DataFrame(results)
+                        st.session_state.batch_results = df
+                        st.session_state.total_analyses += len(results)
+                        
+                        st.success(f"✅ Analyzed {len(results)}")
+                        st.dataframe(df, use_container_width=True)
+                else:
+                    st.error("No 'review' column found")
+            
+            elif ftype == 'text':
+                st.success(f"Found {len(content)} items")
+                
+                if st.button("▶️ Analyze", type="primary"):
+                    results = []
+                    prog = st.progress(0)
+                    
+                    for i, txt in enumerate(content[:200]):
+                        r = predict_sentiment(txt, tokenizer, model)
+                        results.append({'text': txt[:50], 'sentiment': r['label'], 
+                                      'confidence': r['confidence']})
+                        prog.progress((i+1)/min(len(content), 200))
+                    
+                    df = pd.DataFrame(results)
+                    st.session_state.batch_results = df
+                    st.dataframe(df, use_container_width=True)
+    
+    # TAB 4: Analytics
     with tab4:
         st.subheader("📊 Analytics Dashboard")
         
         if st.session_state.analysis_history:
-            history_df = pd.DataFrame(st.session_state.analysis_history)
+            df = pd.DataFrame(st.session_state.analysis_history)
             
             col1, col2, col3 = st.columns(3)
-            total = len(history_df)
-            positive = len(history_df[history_df['sentiment'] == 'Positive'])
-            avg_conf = history_df['confidence'].mean()
+            total = len(df)
+            pos = len(df[df['sentiment']=='Positive'])
+            avg = df['confidence'].mean()
             
-            col1.metric("Total Analyses", total)
-            col2.metric("Positive Rate", f"{positive/total:.1%}")
-            col3.metric("Avg Confidence", f"{avg_conf:.1%}")
+            col1.metric("Total", total)
+            col2.metric("Positive Rate", f"{pos/total:.1%}")
+            col3.metric("Avg Confidence", f"{avg:.1%}")
             
-            # Recent history
-            st.subheader("🕒 Recent Analyses")
-            recent = history_df.tail(10).sort_values('timestamp', ascending=False)
-            
-            for _, row in recent.iterrows():
+            st.subheader("Recent Activity")
+            for _, row in df.tail(10).sort_values('timestamp', ascending=False).iterrows():
                 emoji = "😊" if row['sentiment'] == "Positive" else "😠"
                 st.markdown(f"""
                 <div class="metric-card">
                     <strong>{emoji} {row['sentiment']}</strong> ({row['confidence']:.1%})<br>
-                    <small>{row['text']}...</small><br>
-                    <small>📅 {row['timestamp']}</small>
+                    <small>{row['text']}</small><br>
+                    <small>🌍 {row.get('language', 'en').upper()} | 📅 {row['timestamp']}</small>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("No analysis history yet. Start analyzing to see statistics!")
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #666; padding: 1rem;">
-        🤖 Powered by BERT | Advanced Multi-Source Sentiment Analyzer
-    </div>
-    """, unsafe_allow_html=True)
+            st.info("No history yet")
 
 if __name__ == "__main__":
     main()

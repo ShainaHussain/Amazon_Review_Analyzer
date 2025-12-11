@@ -1,7 +1,27 @@
-streamlit
-pandas
-numpy
-transformers
-torch
-plotly
-openpyxl
+# Core Dependencies
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# ML & NLP Models
+torch>=2.0.0
+transformers>=4.35.0
+
+# Visualization
+plotly>=5.17.0
+matplotlib>=3.7.0
+wordcloud>=1.9.2
+
+# PDF Support
+PyPDF2>=3.0.0
+
+# API Integration
+google-api-python-client>=2.100.0
+praw>=7.7.0
+
+# Language Detection
+langdetect>=1.0.9
+
+# Additional utilities
+openpyxl>=3.1.0  # For Excel files
+python-dateutil>=2.8.2
