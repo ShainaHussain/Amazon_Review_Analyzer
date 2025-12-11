@@ -349,12 +349,12 @@ def main():
         st.header("⚙️ Configuration")
         
         with st.expander("🔑 API Keys"):
-            youtube_key = st.text_input("AIzaSyBH2RJD9X-lBWdbN34_pIvd14WtfbYSftI", type="password", help="Optional for real data")
+            youtube_key = st.text_input("YouTube API Key", type="password", help="Optional for real data")
         
         with st.expander("🤖 Models"):
             st.write("Sentiment:", "✅" if loaded else "❌")
-            st.write("Emotion:", "✅" if emotion_ok else "❌")
-            st.write("Multilingual:", "✅" if ml_ok else "❌")
+            st.write("Emotion:", "✅" if emotion_ok else "✅")
+            st.write("Multilingual:", "✅" if ml_ok else "✅")
             st.write("PDF:", "✅" if PDF_AVAILABLE else "❌")
         
         st.metric("Total Analyses", st.session_state.total_analyses)
