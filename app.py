@@ -2,10 +2,11 @@
 Sentimart Pro - Advanced Multi-Source Sentiment Analysis
 Features:
 - Real API integration (YouTube)
-- PDF support
+- PDF support with robust encoding
 - Word clouds
 - Emotion detection
 - Multi-language support
+- Fixed file upload with multiple encoding support
 """
 
 import streamlit as st
@@ -22,6 +23,7 @@ from urllib.parse import urlparse, parse_qs
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from collections import Counter
+import io
 
 # Optional imports with error handling
 try:
@@ -42,6 +44,12 @@ try:
     LANG_DETECT_AVAILABLE = True
 except ImportError:
     LANG_DETECT_AVAILABLE = False
+
+try:
+    import chardet
+    CHARDET_AVAILABLE = True
+except ImportError:
+    CHARDET_AVAILABLE = False
 
 # Page config
 st.set_page_config(
@@ -245,41 +253,159 @@ def fetch_youtube_comments(video_url, api_key, max_results=50):
         return None, str(e)
 
 # ============================================================================
-# FILE READING
+# FILE READING - ENHANCED WITH ROBUST ENCODING
 # ============================================================================
+
+def detect_encoding(file_bytes):
+    """Detect file encoding using chardet if available"""
+    if CHARDET_AVAILABLE:
+        try:
+            result = chardet.detect(file_bytes)
+            return result['encoding'] if result['encoding'] else 'utf-8'
+        except:
+            return 'utf-8'
+    return 'utf-8'
 
 def read_pdf(file):
     if not PDF_AVAILABLE:
-        return None, "PyPDF2 not installed"
+        return None, "PyPDF2 not installed. Install with: pip install PyPDF2"
     try:
         pdf = PyPDF2.PdfReader(file)
         text = ""
         for page in pdf.pages:
-            text += page.extract_text() + "\n"
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
+        
+        if not text.strip():
+            return None, "Could not extract text from PDF"
+        
         paragraphs = [p.strip() for p in text.split('\n') if len(p.strip()) > 20]
         return paragraphs, None
     except Exception as e:
-        return None, str(e)
+        return None, f"PDF read error: {str(e)}"
+
+def read_csv_with_fallback(uploaded_file):
+    """Read CSV with multiple encoding attempts"""
+    # List of encodings to try in order
+    encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'utf-16', 'ascii']
+    
+    # If chardet is available, try detected encoding first
+    if CHARDET_AVAILABLE:
+        try:
+            uploaded_file.seek(0)
+            raw_data = uploaded_file.read()
+            detected_encoding = detect_encoding(raw_data)
+            if detected_encoding and detected_encoding.lower() not in [e.lower() for e in encodings]:
+                encodings.insert(0, detected_encoding)
+        except:
+            pass
+    
+    # Try each encoding
+    for encoding in encodings:
+        try:
+            uploaded_file.seek(0)
+            df = pd.read_csv(
+                uploaded_file, 
+                encoding=encoding,
+                on_bad_lines='skip',
+                engine='python'
+            )
+            return df, None, encoding
+        except (UnicodeDecodeError, pd.errors.ParserError):
+            continue
+        except Exception as e:
+            continue
+    
+    # Final fallback: ignore errors
+    try:
+        uploaded_file.seek(0)
+        df = pd.read_csv(
+            uploaded_file,
+            encoding='utf-8',
+            errors='ignore',
+            on_bad_lines='skip',
+            engine='python'
+        )
+        return df, None, 'utf-8 (with errors ignored)'
+    except Exception as e:
+        return None, f"Could not read CSV: {str(e)}", None
+
+def read_excel_with_fallback(uploaded_file):
+    """Read Excel with error handling"""
+    try:
+        uploaded_file.seek(0)
+        # Try openpyxl engine first (for .xlsx)
+        try:
+            df = pd.read_excel(uploaded_file, engine='openpyxl')
+            return df, None
+        except:
+            # Fallback to default engine
+            uploaded_file.seek(0)
+            df = pd.read_excel(uploaded_file)
+            return df, None
+    except Exception as e:
+        return None, f"Excel read error: {str(e)}. Make sure openpyxl is installed: pip install openpyxl"
+
+def read_text_with_fallback(uploaded_file):
+    """Read text file with multiple encoding attempts"""
+    encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'ascii']
+    
+    for encoding in encodings:
+        try:
+            uploaded_file.seek(0)
+            content = uploaded_file.read().decode(encoding)
+            lines = [l.strip() for l in content.split('\n') if l.strip()]
+            return lines, None, encoding
+        except UnicodeDecodeError:
+            continue
+    
+    # Final fallback: ignore errors
+    try:
+        uploaded_file.seek(0)
+        content = uploaded_file.read().decode('utf-8', errors='ignore')
+        lines = [l.strip() for l in content.split('\n') if l.strip()]
+        return lines, None, 'utf-8 (with errors ignored)'
+    except Exception as e:
+        return None, f"Could not read text file: {str(e)}", None
 
 def read_file(uploaded_file):
+    """
+    Enhanced file reading with robust encoding support
+    Returns: (content, file_type, error, encoding_info)
+    """
     ext = uploaded_file.name.split('.')[-1].lower()
     
     try:
         if ext == 'csv':
-            return pd.read_csv(uploaded_file), 'dataframe', None
+            df, error, encoding = read_csv_with_fallback(uploaded_file)
+            if error:
+                return None, 'error', error, None
+            return df, 'dataframe', None, encoding
+        
         elif ext in ['xlsx', 'xls']:
-            return pd.read_excel(uploaded_file), 'dataframe', None
+            df, error = read_excel_with_fallback(uploaded_file)
+            if error:
+                return None, 'error', error, None
+            return df, 'dataframe', None, 'excel'
+        
         elif ext == 'txt':
-            content = uploaded_file.read().decode('utf-8')
-            lines = [l.strip() for l in content.split('\n') if l.strip()]
-            return lines, 'text', None
+            lines, error, encoding = read_text_with_fallback(uploaded_file)
+            if error:
+                return None, 'error', error, None
+            return lines, 'text', None, encoding
+        
         elif ext == 'pdf':
             paragraphs, error = read_pdf(uploaded_file)
-            return paragraphs, 'text' if paragraphs else 'error', error
+            if error:
+                return None, 'error', error, None
+            return paragraphs, 'text', None, 'pdf'
+        
         else:
-            return None, 'unsupported', "Unsupported format"
+            return None, 'unsupported', f"Unsupported file format: .{ext}", None
+    
     except Exception as e:
-        return None, 'error', str(e)
+        return None, 'error', f"Unexpected error reading file: {str(e)}", None
 
 # ============================================================================
 # VISUALIZATIONS
@@ -351,11 +477,14 @@ def main():
         with st.expander("🔑 API Keys"):
             youtube_key = st.text_input("YouTube API Key", type="password", help="Optional for real data")
         
-        with st.expander("🤖 Models"):
-            st.write("Sentiment:", "✅" if loaded else "❌")
-            st.write("Emotion:", "✅" if emotion_ok else "✅")
-            st.write("Multilingual:", "✅" if ml_ok else "✅")
-            st.write("PDF:", "✅" if PDF_AVAILABLE else "❌")
+        with st.expander("🤖 Models & Libraries"):
+            st.write("✅ Sentiment:", "✅" if loaded else "❌")
+            st.write("✅ Emotion:", "✅" if emotion_ok else "⚠️")
+            st.write("✅ Multilingual:", "✅" if ml_ok else "⚠️")
+            st.write("✅ PDF:", "✅" if PDF_AVAILABLE else "❌")
+            st.write("✅ Chardet:", "✅" if CHARDET_AVAILABLE else "⚠️")
+            if not CHARDET_AVAILABLE:
+                st.caption("💡 Install chardet for better encoding detection: pip install chardet")
         
         st.metric("Total Analyses", st.session_state.total_analyses)
         
@@ -383,7 +512,7 @@ def main():
         
         if st.button("🔍 Analyze", type="primary", use_container_width=True):
             if not text.strip():
-                st.warning("Enter text")
+                st.warning("Please enter some text to analyze")
             else:
                 with st.spinner("Analyzing..."):
                     result = predict_sentiment(text, tokenizer, model)
@@ -439,17 +568,20 @@ def main():
         
         if st.button("🚀 Fetch & Analyze", type="primary"):
             if not url:
-                st.warning("Enter YouTube URL")
+                st.warning("Please enter a YouTube URL")
             elif 'youtube' not in url and 'youtu.be' not in url:
                 st.error("Please enter a valid YouTube URL")
             else:
                 with st.spinner("Fetching YouTube comments..."):
-                    comments, mode = fetch_youtube_comments(url, youtube_key if 'youtube_key' in locals() else None, max_items)
+                    comments, mode = fetch_youtube_comments(url, youtube_key if youtube_key else None, max_items)
                     
                     if isinstance(mode, str) and mode in ['demo', 'api']:
-                        st.info(f"Mode: {mode.upper()}")
+                        if mode == 'demo':
+                            st.info("🔵 Demo Mode: Showing sample comments (Add YouTube API key for real data)")
+                        else:
+                            st.success("✅ Using YouTube API")
                     else:
-                        st.error(f"Error: {mode}")
+                        st.error(f"❌ Error: {mode}")
                         st.stop()
                     
                     if comments:
@@ -494,64 +626,140 @@ def main():
     # TAB 3: File Upload
     with tab3:
         st.subheader("📦 Batch File Analysis")
-        st.info("Supports: CSV, Excel, TXT, PDF")
         
-        file = st.file_uploader("Upload file:", type=['csv', 'xlsx', 'txt', 'pdf'])
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.info("✅ Supports: CSV, Excel (.xlsx, .xls), TXT, PDF")
+        with col2:
+            if not CHARDET_AVAILABLE:
+                st.warning("💡 Install chardet for better encoding: `pip install chardet`")
+        
+        file = st.file_uploader("Upload file:", type=['csv', 'xlsx', 'xls', 'txt', 'pdf'])
         
         if file:
-            content, ftype, error = read_file(file)
+            with st.spinner("Reading file..."):
+                content, ftype, error, encoding_info = read_file(file)
             
             if error:
-                st.error(error)
+                st.error(f"❌ {error}")
+                if 'encoding' in error.lower() or 'utf' in error.lower():
+                    st.info("""
+                    💡 **Encoding Issues? Try these:**
+                    - Open the file in Excel/Notepad
+                    - Save As → Choose 'CSV UTF-8' or 'Text (UTF-8)'
+                    - Or install chardet: `pip install chardet`
+                    """)
             elif ftype == 'dataframe':
-                st.success(f"Loaded {len(content)} rows")
-                st.dataframe(content.head(), use_container_width=True)
+                st.success(f"✅ Loaded {len(content)} rows")
+                if encoding_info:
+                    st.caption(f"📝 Encoding detected: {encoding_info}")
                 
+                # Show preview
+                with st.expander("📋 Preview Data", expanded=True):
+                    st.dataframe(content.head(10), use_container_width=True)
+                
+                # Find text column
                 col = None
-                for c in content.columns:
-                    if c.lower() in ['review', 'text', 'comment']:
-                        col = c
+                possible_cols = ['review', 'text', 'comment', 'feedback', 'message', 'content']
+                
+                for possible in possible_cols:
+                    for c in content.columns:
+                        if possible in c.lower():
+                            col = c
+                            break
+                    if col:
                         break
                 
                 if col:
-                    st.info(f"Using column: **{col}**")
+                    st.success(f"✅ Using column: **{col}**")
                     
-                    if st.button("▶️ Analyze All", type="primary"):
+                    max_rows = st.slider("Max rows to analyze:", 10, 500, 100)
+                    
+                    if st.button("▶️ Analyze All", type="primary", use_container_width=True):
                         valid = content[content[col].notna()][col]
                         results = []
                         prog = st.progress(0)
                         
-                        for i, txt in enumerate(valid.head(200)):
-                            r = predict_sentiment(str(txt), tokenizer, model)
-                            results.append({'review': str(txt)[:50], 'sentiment': r['label'], 
-                                          'confidence': r['confidence']})
-                            prog.progress((i+1)/min(len(valid), 200))
+                        for i, txt in enumerate(valid.head(max_rows)):
+                            try:
+                                txt_str = str(txt)
+                                if txt_str.strip():
+                                    r = predict_sentiment(txt_str, tokenizer, model)
+                                    results.append({
+                                        'review': txt_str[:80], 
+                                        'sentiment': r['label'], 
+                                        'confidence': r['confidence']
+                                    })
+                            except Exception as e:
+                                continue
+                            prog.progress((i+1)/min(len(valid), max_rows))
                         
+                        if results:
+                            df = pd.DataFrame(results)
+                            st.session_state.batch_results = df
+                            st.session_state.total_analyses += len(results)
+                            
+                            col1, col2, col3 = st.columns(3)
+                            pos = len(df[df['sentiment']=='Positive'])
+                            col1.metric("Analyzed", len(results))
+                            col2.metric("Positive", pos)
+                            col3.metric("Negative", len(results)-pos)
+                            
+                            st.plotly_chart(create_distribution_pie(df), use_container_width=True)
+                            st.dataframe(df, use_container_width=True)
+                        else:
+                            st.warning("No valid text found to analyze")
+                else:
+                    st.error("❌ No text column found")
+                    st.info(f"Available columns: {', '.join(content.columns)}")
+                    selected_col = st.selectbox("Select text column:", content.columns)
+                    if st.button("Use this column"):
+                        col = selected_col
+                        st.rerun()
+            
+            elif ftype == 'text':
+                st.success(f"✅ Found {len(content)} text items")
+                if encoding_info:
+                    st.caption(f"📝 Encoding: {encoding_info}")
+                
+                with st.expander("📋 Preview", expanded=True):
+                    for i, item in enumerate(content[:5]):
+                        st.text(f"{i+1}. {item[:100]}...")
+                
+                max_items = st.slider("Max items to analyze:", 10, 500, min(100, len(content)))
+                
+                if st.button("▶️ Analyze", type="primary", use_container_width=True):
+                    results = []
+                    prog = st.progress(0)
+                    
+                    for i, txt in enumerate(content[:max_items]):
+                        try:
+                            if txt.strip():
+                                r = predict_sentiment(txt, tokenizer, model)
+                                results.append({
+                                    'text': txt[:80], 
+                                    'sentiment': r['label'], 
+                                    'confidence': r['confidence']
+                                })
+                        except:
+                            continue
+                        prog.progress((i+1)/min(len(content), max_items))
+                    
+                    if results:
                         df = pd.DataFrame(results)
                         st.session_state.batch_results = df
                         st.session_state.total_analyses += len(results)
                         
-                        st.success(f"✅ Analyzed {len(results)}")
+                        col1, col2, col3 = st.columns(3)
+                        pos = len(df[df['sentiment']=='Positive'])
+                        col1.metric("Analyzed", len(results))
+                        col2.metric("Positive", pos)
+                        col3.metric("Negative", len(results)-pos)
+                        
+                        st.plotly_chart(create_distribution_pie(df), use_container_width=True)
                         st.dataframe(df, use_container_width=True)
-                else:
-                    st.error("No 'review' column found")
-            
-            elif ftype == 'text':
-                st.success(f"Found {len(content)} items")
-                
-                if st.button("▶️ Analyze", type="primary"):
-                    results = []
-                    prog = st.progress(0)
-                    
-                    for i, txt in enumerate(content[:200]):
-                        r = predict_sentiment(txt, tokenizer, model)
-                        results.append({'text': txt[:50], 'sentiment': r['label'], 
-                                      'confidence': r['confidence']})
-                        prog.progress((i+1)/min(len(content), 200))
-                    
-                    df = pd.DataFrame(results)
-                    st.session_state.batch_results = df
-                    st.dataframe(df, use_container_width=True)
+                    else:
+                        st.warning("No valid text found to analyze")
     
     # TAB 4: Analytics
     with tab4:
@@ -569,7 +777,7 @@ def main():
             col2.metric("Positive Rate", f"{pos/total:.1%}")
             col3.metric("Avg Confidence", f"{avg:.1%}")
             
-            st.subheader("Recent Activity")
+            st.subheader("📜 Recent Activity")
             for _, row in df.tail(10).sort_values('timestamp', ascending=False).iterrows():
                 emoji = "😊" if row['sentiment'] == "Positive" else "😠"
                 st.markdown(f"""
@@ -580,7 +788,7 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("No history yet")
+            st.info("📭 No analysis history yet. Start analyzing to see your activity!")
 
 if __name__ == "__main__":
     main()

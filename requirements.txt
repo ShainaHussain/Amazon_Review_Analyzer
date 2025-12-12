@@ -25,3 +25,4 @@ langdetect>=1.0.9
 # Additional utilities
 openpyxl>=3.1.0  # For Excel files
 python-dateutil>=2.8.2
+chardet
