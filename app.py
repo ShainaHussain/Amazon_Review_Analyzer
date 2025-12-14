@@ -53,7 +53,7 @@ except ImportError:
 
 # Page config
 st.set_page_config(
-    page_title="Sentimart Pro",
+    page_title="Sentimart",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -455,7 +455,7 @@ def create_distribution_pie(df):
 def main():
     st.markdown("""
     <div class="main-header">
-        <h1>🛒 Sentimart Pro</h1>
+        <h1>🛒 Sentimart</h1>
         <p>Advanced Multi-Source Sentiment & Emotion Analysis</p>
         <p style="font-size:0.85em;opacity:0.9">✨ YouTube API • 📄 PDF • ☁️ Word Clouds • 😊 Emotions • 🌍 Multi-Language</p>
     </div>
