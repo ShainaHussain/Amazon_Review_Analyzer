@@ -1,6 +1,6 @@
 """
-Sentimart Pro - Advanced Multi-Source Sentiment Analysis
-Enhanced UI/UX Version - Production-Ready Design
+Sentimart Pro - Enterprise SaaS Analytics Dashboard
+Professional ML Sentiment Analysis Platform
 """
 
 import streamlit as st
@@ -45,509 +45,717 @@ except ImportError:
     CHARDET_AVAILABLE = False
 
 # ============================================================================
-# PAGE CONFIG - Enhanced for Premium Feel
+# PAGE CONFIGURATION
 # ============================================================================
 st.set_page_config(
-    page_title="Sentimart Pro",
-    page_icon="🛒",
+    page_title="Sentimart Pro | Analytics Dashboard",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ============================================================================
-# PREMIUM CSS STYLING - Production-Grade Design System
+# ENTERPRISE SAAS DASHBOARD CSS
 # ============================================================================
 st.markdown("""
 <style>
-    /* ===== DESIGN SYSTEM ===== */
+    /* ===== DESIGN TOKENS ===== */
     :root {
-        --primary: #667eea;
-        --primary-dark: #5568d3;
-        --secondary: #764ba2;
-        --success: #10b981;
-        --danger: #ef4444;
-        --warning: #f59e0b;
-        --neutral-50: #f9fafb;
-        --neutral-100: #f3f4f6;
-        --neutral-200: #e5e7eb;
-        --neutral-700: #374151;
-        --neutral-800: #1f2937;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        /* Colors */
+        --primary: #4F46E5;
+        --primary-hover: #4338CA;
+        --success: #16A34A;
+        --danger: #DC2626;
+        --warning: #EA580C;
+        --text-primary: #0F172A;
+        --text-secondary: #475569;
+        --text-muted: #94A3B8;
+        --bg-app: #F8FAFC;
+        --bg-card: #FFFFFF;
+        --border-color: #E2E8F0;
+        --border-light: #F1F5F9;
+        
+        /* Shadows */
+        --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        
+        /* Spacing */
+        --spacing-xs: 0.5rem;
+        --spacing-sm: 0.75rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+        
+        /* Border Radius */
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-xl: 16px;
     }
     
     /* ===== GLOBAL OVERRIDES ===== */
     .main {
-        padding: 1rem 2rem 3rem 2rem;
-        background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);
+        padding: 2rem 3rem;
+        background-color: var(--bg-app);
     }
     
     .block-container {
-        padding-top: 2rem;
+        padding-top: 1rem;
         max-width: 1400px;
     }
     
-    /* Hide Streamlit Branding */
+    /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
     
-    /* ===== HERO HEADER ===== */
-    .hero-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-        padding: 2rem 3rem;
-        border-radius: 16px;
-        color: white;
-        text-align: center;
-        margin-bottom: 2.5rem;
-        box-shadow: var(--shadow-xl);
-        position: relative;
-        overflow: hidden;
+    /* ===== TYPOGRAPHY ===== */
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--text-primary);
+        font-weight: 600;
     }
     
-    .hero-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-        animation: pulse 15s ease-in-out infinite;
+    p, span, div {
+        color: var(--text-secondary);
     }
     
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 0.8; }
-    }
-    
-    .hero-header h1 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .hero-subtitle {
-        font-size: 1.1rem;
-        font-weight: 400;
-        opacity: 0.95;
-        margin-bottom: 0.75rem;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .hero-features {
-        font-size: 0.9rem;
-        opacity: 0.85;
-        position: relative;
-        z-index: 1;
-    }
-    
-    /* ===== PREMIUM CARDS ===== */
-    .premium-card {
-        background: white;
-        padding: 1.75rem;
-        border-radius: 12px;
+    /* ===== HEADER SECTION ===== */
+    .dashboard-header {
+        background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+        padding: 2rem 2.5rem;
+        border-radius: var(--radius-lg);
+        margin-bottom: 2rem;
         box-shadow: var(--shadow-md);
-        border: 1px solid var(--neutral-200);
-        margin-bottom: 1.5rem;
-        transition: all 0.3s ease;
     }
     
-    .premium-card:hover {
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-    }
-    
-    /* ===== SENTIMENT RESULT CARDS ===== */
-    .result-card {
-        padding: 2rem;
-        border-radius: 12px;
-        margin: 1.5rem 0;
-        box-shadow: var(--shadow-lg);
-        border-left: 5px solid;
-        transition: all 0.3s ease;
-    }
-    
-    .result-card:hover {
-        box-shadow: var(--shadow-xl);
-        transform: translateY(-2px);
-    }
-    
-    .result-positive {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        border-left-color: var(--success);
-        color: #065f46;
-    }
-    
-    .result-negative {
-        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-        border-left-color: var(--danger);
-        color: #991b1b;
-    }
-    
-    .result-neutral {
-        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-        border-left-color: var(--primary);
-        color: #3730a3;
-    }
-    
-    .result-card h3 {
-        font-size: 1.75rem;
+    .dashboard-header h1 {
+        color: white;
+        font-size: 1.875rem;
         font-weight: 700;
-        margin-bottom: 0.75rem;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.025em;
     }
     
-    .result-meta {
-        font-size: 0.95rem;
-        opacity: 0.9;
+    .dashboard-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1rem;
+        margin: 0;
+        font-weight: 400;
+    }
+    
+    .header-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.375rem 0.875rem;
+        border-radius: 20px;
+        font-size: 0.8125rem;
         font-weight: 500;
+        margin-top: 0.75rem;
+        margin-right: 0.5rem;
     }
     
-    /* ===== METRIC CARDS ===== */
-    .metric-card {
-        background: white;
-        padding: 1.25rem 1.5rem;
-        border-radius: 10px;
-        border: 1px solid var(--neutral-200);
+    /* ===== CARD SYSTEM ===== */
+    .dashboard-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
         box-shadow: var(--shadow-sm);
-        margin: 0.75rem 0;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+        transition: box-shadow 0.2s ease;
+    }
+    
+    .dashboard-card:hover {
+        box-shadow: var(--shadow-md);
+    }
+    
+    .card-header {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .card-subheader {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-top: -0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* ===== METRICS / KPI CARDS ===== */
+    .kpi-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-xs);
+        text-align: center;
         transition: all 0.2s ease;
     }
     
-    .metric-card:hover {
+    .kpi-card:hover {
         border-color: var(--primary);
-        box-shadow: var(--shadow-md);
+        box-shadow: var(--shadow-sm);
     }
     
-    .metric-value {
-        font-size: 2rem;
+    .kpi-value {
+        font-size: 2.25rem;
         font-weight: 700;
-        color: var(--primary);
+        color: var(--text-primary);
         line-height: 1;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.5rem;
     }
     
-    .metric-label {
+    .kpi-label {
         font-size: 0.875rem;
-        color: var(--neutral-700);
+        color: var(--text-muted);
         font-weight: 500;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.05em;
+    }
+    
+    .kpi-change {
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+    
+    .kpi-change.positive {
+        color: var(--success);
+    }
+    
+    .kpi-change.negative {
+        color: var(--danger);
+    }
+    
+    /* ===== SENTIMENT RESULT CARDS ===== */
+    .sentiment-result {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 1.75rem;
+        border: 2px solid;
+        box-shadow: var(--shadow-sm);
+        margin: 1.5rem 0;
+    }
+    
+    .sentiment-result.positive {
+        border-color: var(--success);
+        background: linear-gradient(to right, rgba(22, 163, 74, 0.03), rgba(22, 163, 74, 0.01));
+    }
+    
+    .sentiment-result.negative {
+        border-color: var(--danger);
+        background: linear-gradient(to right, rgba(220, 38, 38, 0.03), rgba(220, 38, 38, 0.01));
+    }
+    
+    .sentiment-result.neutral {
+        border-color: var(--primary);
+        background: linear-gradient(to right, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
+    }
+    
+    .sentiment-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .sentiment-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+    }
+    
+    .sentiment-label {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .sentiment-meta {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-light);
+    }
+    
+    .sentiment-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .sentiment-meta-label {
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    
+    .sentiment-meta-value {
+        font-weight: 600;
+        color: var(--text-primary);
     }
     
     /* ===== SIDEBAR STYLING ===== */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
-        border-right: 1px solid var(--neutral-200);
+        background-color: var(--bg-card);
+        border-right: 1px solid var(--border-color);
+        padding-top: 2rem;
     }
     
-    [data-testid="stSidebar"] .stMarkdown {
-        padding: 0.5rem 0;
+    [data-testid="stSidebar"] .element-container {
+        padding: 0 1rem;
     }
     
     .sidebar-section {
-        background: white;
-        padding: 1rem 1.25rem;
-        border-radius: 10px;
-        margin: 0.75rem 0;
-        border: 1px solid var(--neutral-200);
-        box-shadow: var(--shadow-sm);
+        background: var(--bg-app);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-light);
     }
     
-    .sidebar-header {
-        font-size: 0.875rem;
+    .sidebar-title {
+        font-size: 0.75rem;
         font-weight: 700;
-        color: var(--neutral-700);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.75rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid var(--neutral-200);
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
     }
     
-    .status-indicator {
-        display: inline-block;
+    .status-row {
+        display: flex;
+        align-items: center;
+        padding: 0.625rem 0;
+        font-size: 0.875rem;
+    }
+    
+    .status-dot {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        margin-right: 6px;
+        margin-right: 0.625rem;
+        flex-shrink: 0;
     }
     
-    .status-active {
+    .status-dot.active {
         background: var(--success);
-        box-shadow: 0 0 8px var(--success);
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
     }
     
-    .status-inactive {
-        background: var(--neutral-200);
+    .status-dot.inactive {
+        background: var(--text-muted);
+    }
+    
+    .status-label {
+        color: var(--text-secondary);
+        font-weight: 500;
     }
     
     /* ===== BUTTONS ===== */
     .stButton > button {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background-color: var(--primary);
         color: white;
         border: none;
-        border-radius: 8px;
-        padding: 0.75rem 2rem;
+        border-radius: var(--radius-md);
+        padding: 0.625rem 1.5rem;
         font-weight: 600;
-        font-size: 0.95rem;
-        box-shadow: var(--shadow-md);
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+        letter-spacing: 0.025em;
+        transition: all 0.2s ease;
+        box-shadow: var(--shadow-xs);
     }
     
     .stButton > button:hover {
-        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary) 100%);
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
+        background-color: var(--primary-hover);
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
     }
     
     .stButton > button:active {
         transform: translateY(0);
     }
     
-    /* ===== TABS STYLING ===== */
+    .stButton > button[kind="primary"] {
+        background-color: var(--primary);
+    }
+    
+    .stButton > button[kind="secondary"] {
+        background-color: transparent;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+    
+    /* ===== TABS ===== */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: white;
-        padding: 0.5rem;
-        border-radius: 10px;
-        box-shadow: var(--shadow-sm);
+        gap: 0.5rem;
+        background-color: transparent;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0;
     }
     
     .stTabs [data-baseweb="tab"] {
-        background: transparent;
-        border-radius: 8px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
+        background-color: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0.875rem 1.25rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 0.875rem;
+        border-bottom: 2px solid transparent;
         transition: all 0.2s ease;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
-        background: var(--neutral-100);
+        color: var(--text-primary);
+        background-color: var(--bg-app);
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-        color: white !important;
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        background-color: transparent;
+    }
+    
+    .stTabs [data-baseweb="tab-panel"] {
+        padding-top: 2rem;
     }
     
     /* ===== INPUT FIELDS ===== */
     .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
-        border-radius: 8px;
-        border: 2px solid var(--neutral-200);
-        padding: 0.75rem 1rem;
-        font-size: 0.95rem;
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 0.625rem 0.875rem;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        background-color: var(--bg-card);
         transition: all 0.2s ease;
     }
     
     .stTextInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        outline: none;
+    }
+    
+    .stTextArea > div > div > textarea {
+        min-height: 120px;
+    }
+    
+    /* ===== CHECKBOX & RADIO ===== */
+    .stCheckbox {
+        padding: 0.5rem 0;
+    }
+    
+    .stCheckbox label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
     }
     
     /* ===== FILE UPLOADER ===== */
     [data-testid="stFileUploader"] {
-        background: white;
+        background-color: var(--bg-card);
+        border: 2px dashed var(--border-color);
+        border-radius: var(--radius-lg);
         padding: 2rem;
-        border-radius: 12px;
-        border: 2px dashed var(--neutral-200);
-        transition: all 0.3s ease;
+        text-align: center;
+        transition: all 0.2s ease;
     }
     
     [data-testid="stFileUploader"]:hover {
         border-color: var(--primary);
-        background: var(--neutral-50);
+        background-color: rgba(79, 70, 229, 0.02);
     }
     
-    /* ===== CHARTS CONTAINER ===== */
-    .chart-container {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: var(--shadow-md);
-        margin: 1rem 0;
-        border: 1px solid var(--neutral-200);
+    [data-testid="stFileUploader"] section {
+        border: none;
+        padding: 0;
     }
     
-    /* ===== DATAFRAME STYLING ===== */
-    .dataframe-container {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: var(--shadow-md);
-        margin: 1.5rem 0;
-        border: 1px solid var(--neutral-200);
-    }
-    
-    /* ===== ALERTS & NOTIFICATIONS ===== */
-    .stAlert {
-        border-radius: 10px;
-        border-left: 4px solid;
-        padding: 1rem 1.25rem;
-        box-shadow: var(--shadow-sm);
-    }
-    
-    /* ===== EXPANDER STYLING ===== */
+    /* ===== EXPANDER ===== */
     .streamlit-expanderHeader {
-        background: white;
-        border-radius: 8px;
-        border: 1px solid var(--neutral-200);
-        padding: 0.75rem 1rem;
+        background-color: var(--bg-app);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 0.875rem 1rem;
         font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text-primary);
         transition: all 0.2s ease;
     }
     
     .streamlit-expanderHeader:hover {
-        background: var(--neutral-50);
+        background-color: var(--bg-card);
         border-color: var(--primary);
+    }
+    
+    /* ===== CHART CONTAINER ===== */
+    .chart-wrapper {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-xs);
+        margin: 1rem 0;
+    }
+    
+    .chart-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    /* ===== DATA TABLE ===== */
+    .dataframe-container {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-xs);
+        margin: 1.5rem 0;
+    }
+    
+    /* ===== ALERTS ===== */
+    .stAlert {
+        background-color: var(--bg-card);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+        padding: 1rem 1.25rem;
+        box-shadow: var(--shadow-xs);
+    }
+    
+    .stAlert[data-baseweb="notification"] {
+        background-color: var(--bg-card);
+    }
+    
+    /* Info alert */
+    div[data-baseweb="notification"][kind="info"] {
+        background-color: rgba(79, 70, 229, 0.05);
+        border-color: var(--primary);
+    }
+    
+    /* Success alert */
+    div[data-baseweb="notification"][kind="success"] {
+        background-color: rgba(22, 163, 74, 0.05);
+        border-color: var(--success);
+    }
+    
+    /* Warning alert */
+    div[data-baseweb="notification"][kind="warning"] {
+        background-color: rgba(234, 88, 12, 0.05);
+        border-color: var(--warning);
+    }
+    
+    /* Error alert */
+    div[data-baseweb="notification"][kind="error"] {
+        background-color: rgba(220, 38, 38, 0.05);
+        border-color: var(--danger);
     }
     
     /* ===== PROGRESS BAR ===== */
     .stProgress > div > div > div {
-        background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
-        border-radius: 10px;
+        background-color: var(--primary);
+        border-radius: var(--radius-sm);
     }
     
-    /* ===== EMOTION BADGE ===== */
-    .emotion-badge {
-        display: inline-block;
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        margin: 0.25rem;
-        font-size: 0.85rem;
+    /* ===== DOWNLOAD BUTTON ===== */
+    .stDownloadButton > button {
+        background-color: var(--success);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        padding: 0.5rem 1.25rem;
         font-weight: 600;
-        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-        color: var(--primary);
-        box-shadow: var(--shadow-sm);
+        font-size: 0.8125rem;
         transition: all 0.2s ease;
     }
     
-    .emotion-badge:hover {
-        transform: scale(1.05);
-        box-shadow: var(--shadow-md);
+    .stDownloadButton > button:hover {
+        background-color: #15803D;
+        box-shadow: var(--shadow-sm);
     }
     
-    /* ===== ACTIVITY CARD ===== */
-    .activity-card {
-        background: white;
-        padding: 1.25rem 1.5rem;
-        border-radius: 10px;
-        margin: 0.75rem 0;
-        border-left: 4px solid var(--primary);
-        box-shadow: var(--shadow-sm);
+    /* ===== ACTIVITY TIMELINE ===== */
+    .activity-item {
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        border-left: 3px solid var(--primary);
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
         transition: all 0.2s ease;
     }
     
-    .activity-card:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateX(4px);
+    .activity-item:hover {
+        box-shadow: var(--shadow-sm);
+        border-left-width: 3px;
     }
     
-    .activity-text {
-        font-size: 0.95rem;
-        color: var(--neutral-800);
-        margin: 0.5rem 0;
+    .activity-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+    }
+    
+    .activity-sentiment {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .activity-sentiment-icon {
+        font-size: 1.25rem;
+    }
+    
+    .activity-sentiment-label {
+        font-weight: 600;
+        font-size: 0.9375rem;
+    }
+    
+    .activity-confidence {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
         font-weight: 500;
     }
     
+    .activity-text {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin-bottom: 0.75rem;
+    }
+    
     .activity-meta {
-        font-size: 0.8rem;
-        color: var(--neutral-700);
-        opacity: 0.8;
+        display: flex;
+        gap: 1rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
     }
     
     /* ===== INFO BOXES ===== */
     .info-box {
-        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-        color: #1e40af;
-        padding: 1.25rem 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid #3b82f6;
+        background: rgba(79, 70, 229, 0.05);
+        border: 1px solid rgba(79, 70, 229, 0.2);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.25rem;
         margin: 1rem 0;
-        box-shadow: var(--shadow-sm);
+        font-size: 0.875rem;
+        color: var(--text-primary);
     }
     
     .success-box {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        color: #065f46;
-        padding: 1.25rem 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid var(--success);
+        background: rgba(22, 163, 74, 0.05);
+        border: 1px solid rgba(22, 163, 74, 0.2);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.25rem;
         margin: 1rem 0;
-        box-shadow: var(--shadow-sm);
+        font-size: 0.875rem;
+        color: var(--text-primary);
     }
     
     .warning-box {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        color: #92400e;
-        padding: 1.25rem 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid var(--warning);
+        background: rgba(234, 88, 12, 0.05);
+        border: 1px solid rgba(234, 88, 12, 0.2);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.25rem;
         margin: 1rem 0;
-        box-shadow: var(--shadow-sm);
+        font-size: 0.875rem;
+        color: var(--text-primary);
+    }
+    
+    /* ===== BADGE ===== */
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.025em;
+    }
+    
+    .badge-primary {
+        background-color: rgba(79, 70, 229, 0.1);
+        color: var(--primary);
+    }
+    
+    .badge-success {
+        background-color: rgba(22, 163, 74, 0.1);
+        color: var(--success);
+    }
+    
+    .badge-danger {
+        background-color: rgba(220, 38, 38, 0.1);
+        color: var(--danger);
+    }
+    
+    /* ===== SECTION DIVIDER ===== */
+    .section-divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: 2rem 0;
     }
     
     /* ===== RESPONSIVE DESIGN ===== */
     @media (max-width: 768px) {
-        .hero-header h1 {
-            font-size: 1.75rem;
+        .main {
+            padding: 1rem;
         }
         
-        .hero-subtitle {
-            font-size: 0.95rem;
-        }
-        
-        .premium-card {
-            padding: 1.25rem;
-        }
-        
-        .result-card {
+        .dashboard-header {
             padding: 1.5rem;
         }
+        
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .dashboard-card {
+            padding: 1rem;
+        }
+        
+        .kpi-value {
+            font-size: 1.75rem;
+        }
     }
     
-    /* ===== SECTION HEADERS ===== */
-    .section-header {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--neutral-800);
-        margin: 2rem 0 1rem 0;
-        padding-bottom: 0.75rem;
-        border-bottom: 3px solid var(--primary);
-        display: inline-block;
-    }
+    /* ===== UTILITY CLASSES ===== */
+    .text-primary { color: var(--text-primary); }
+    .text-secondary { color: var(--text-secondary); }
+    .text-muted { color: var(--text-muted); }
+    .text-success { color: var(--success); }
+    .text-danger { color: var(--danger); }
     
-    /* ===== DOWNLOAD BUTTON SPECIAL ===== */
-    .stDownloadButton > button {
-        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-        box-shadow: var(--shadow-md);
-        transition: all 0.3s ease;
-    }
+    .font-semibold { font-weight: 600; }
+    .font-bold { font-weight: 700; }
     
-    .stDownloadButton > button:hover {
-        background: linear-gradient(135deg, #059669 0%, #047857 100%);
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-    }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mb-3 { margin-bottom: 1.5rem; }
+    
+    .mt-1 { margin-top: 0.5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# SESSION STATE
+# SESSION STATE (NO CHANGES)
 # ============================================================================
 if 'analysis_history' not in st.session_state:
     st.session_state.analysis_history = []
@@ -832,17 +1040,25 @@ def read_file(uploaded_file):
 # ============================================================================
 def create_confidence_chart(pos, neg):
     fig = go.Figure(data=[
-        go.Bar(x=['Negative', 'Positive'], y=[neg, pos],
-               marker_color=['#ef4444', '#10b981'],
-               text=[f'{neg:.1%}', f'{pos:.1%}'], textposition='auto')
+        go.Bar(
+            x=['Negative', 'Positive'],
+            y=[neg, pos],
+            marker_color=['#DC2626', '#16A34A'],
+            text=[f'{neg:.1%}', f'{pos:.1%}'],
+            textposition='auto',
+            textfont=dict(size=14, weight=600)
+        )
     ])
     fig.update_layout(
-        title="Confidence Distribution",
-        height=300,
+        title=None,
+        height=280,
         showlegend=False,
-        yaxis=dict(tickformat='.0%'),
+        yaxis=dict(tickformat='.0%', gridcolor='#F1F5F9'),
+        xaxis=dict(showgrid=False),
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=20, b=20),
+        font=dict(family='system-ui', size=12, color='#475569')
     )
     return fig
 
@@ -850,15 +1066,24 @@ def create_emotion_chart(emotions):
     names = list(emotions.keys())
     scores = list(emotions.values())
     fig = go.Figure(data=[
-        go.Bar(x=names, y=scores, marker_color='#667eea',
-               text=[f'{s:.1%}' for s in scores], textposition='auto')
+        go.Bar(
+            x=names,
+            y=scores,
+            marker_color='#4F46E5',
+            text=[f'{s:.1%}' for s in scores],
+            textposition='auto',
+            textfont=dict(size=12, weight=600)
+        )
     ])
     fig.update_layout(
-        title="Emotion Analysis",
-        height=300,
-        yaxis=dict(tickformat='.0%'),
+        title=None,
+        height=280,
+        yaxis=dict(tickformat='.0%', gridcolor='#F1F5F9'),
+        xaxis=dict(showgrid=False),
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=20, b=20),
+        font=dict(family='system-ui', size=12, color='#475569')
     )
     return fig
 
@@ -875,25 +1100,40 @@ def create_wordcloud(texts, sentiment=None):
 
 def create_distribution_pie(df):
     counts = df['sentiment'].value_counts()
-    colors = ['#10b981' if l == 'Positive' else '#ef4444' for l in counts.index]
-    fig = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=0.4, marker_colors=colors)])
+    colors = ['#16A34A' if l == 'Positive' else '#DC2626' for l in counts.index]
+    fig = go.Figure(data=[
+        go.Pie(
+            labels=counts.index,
+            values=counts.values,
+            hole=0.4,
+            marker_colors=colors,
+            textfont=dict(size=14, weight=600)
+        )
+    ])
     fig.update_layout(
-        title="Sentiment Distribution",
-        height=300,
-        paper_bgcolor='rgba(0,0,0,0)'
+        title=None,
+        height=280,
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=20, b=20),
+        font=dict(family='system-ui', size=12, color='#475569')
     )
     return fig
 
 # ============================================================================
-# MAIN APP - ENHANCED UI/UX
+# MAIN APP - ENTERPRISE DASHBOARD LAYOUT
 # ============================================================================
 def main():
-    # HERO HEADER
+    # DASHBOARD HEADER
     st.markdown("""
-    <div class="hero-header">
-        <h1>🛒 Sentimart Pro</h1>
-        <p class="hero-subtitle">Advanced Multi-Source Sentiment & Emotion Analysis</p>
-        <p class="hero-features">✨ YouTube API • 📄 PDF Support • ☁️ Word Clouds • 😊 Emotion Detection • 🌍 Multi-Language</p>
+    <div class="dashboard-header">
+        <h1>📊 Sentimart</h1>
+        <p>Enterprise Sentiment & Emotion Analysis Platform</p>
+        <div style="margin-top: 1rem;">
+            <span class="header-badge">YouTube API</span>
+            <span class="header-badge">PDF Support</span>
+            <span class="header-badge">Batch Processing</span>
+            <span class="header-badge">Multi-Language</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -909,49 +1149,46 @@ def main():
     # ========== SIDEBAR ==========
     with st.sidebar:
         st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-header">⚙️ Configuration</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-title">Configuration</div>', unsafe_allow_html=True)
         
-        with st.expander("🔑 API Keys", expanded=False):
-            youtube_key = st.text_input("YouTube API Key", type="password", help="Optional - enables real YouTube data")
+        with st.expander("API Keys", expanded=False):
+            youtube_key = st.text_input("YouTube API Key", type="password", help="Optional for real data")
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-header">🤖 System Status</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-title">System Status</div>', unsafe_allow_html=True)
         
         status_html = f"""
-        <div style="padding: 0.5rem 0;">
-            <span class="status-indicator {'status-active' if loaded else 'status-inactive'}"></span>
-            <span style="font-size: 0.9rem; font-weight: 500;">Sentiment Model</span>
+        <div class="status-row">
+            <div class="status-dot {'active' if loaded else 'inactive'}"></div>
+            <span class="status-label">Sentiment Model</span>
         </div>
-        <div style="padding: 0.5rem 0;">
-            <span class="status-indicator {'status-active' if emotion_ok else 'status-inactive'}"></span>
-            <span style="font-size: 0.9rem; font-weight: 500;">Emotion Detection</span>
+        <div class="status-row">
+            <div class="status-dot {'active' if emotion_ok else 'inactive'}"></div>
+            <span class="status-label">Emotion Detection</span>
         </div>
-        <div style="padding: 0.5rem 0;">
-            <span class="status-indicator {'status-active' if ml_ok else 'status-inactive'}"></span>
-            <span style="font-size: 0.9rem; font-weight: 500;">Multi-Language</span>
+        <div class="status-row">
+            <div class="status-dot {'active' if ml_ok else 'inactive'}"></div>
+            <span class="status-label">Multi-Language</span>
         </div>
-        <div style="padding: 0.5rem 0;">
-            <span class="status-indicator {'status-active' if PDF_AVAILABLE else 'status-inactive'}"></span>
-            <span style="font-size: 0.9rem; font-weight: 500;">PDF Support</span>
+        <div class="status-row">
+            <div class="status-dot {'active' if PDF_AVAILABLE else 'inactive'}"></div>
+            <span class="status-label">PDF Support</span>
         </div>
-        <div style="padding: 0.5rem 0;">
-            <span class="status-indicator {'status-active' if CHARDET_AVAILABLE else 'status-inactive'}"></span>
-            <span style="font-size: 0.9rem; font-weight: 500;">Advanced Encoding</span>
+        <div class="status-row">
+            <div class="status-dot {'active' if CHARDET_AVAILABLE else 'inactive'}"></div>
+            <span class="status-label">Encoding Detection</span>
         </div>
         """
         st.markdown(status_html, unsafe_allow_html=True)
-        
-        if not CHARDET_AVAILABLE:
-            st.caption("💡 Install chardet: `pip install chardet`")
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-header">📊 Statistics</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-title">Analytics</div>', unsafe_allow_html=True)
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-value">{st.session_state.total_analyses}</div>
-            <div class="metric-label">Total Analyses</div>
+        <div class="kpi-card">
+            <div class="kpi-value">{st.session_state.total_analyses}</div>
+            <div class="kpi-label">Total Analyses</div>
         </div>
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -960,274 +1197,299 @@ def main():
             st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
             csv = st.session_state.batch_results.to_csv(index=False)
             st.download_button(
-                "📥 Download Results",
+                "Export Results",
                 csv,
-                f"sentimart_results_{datetime.now():%Y%m%d_%H%M%S}.csv",
+                f"sentimart_export_{datetime.now():%Y%m%d_%H%M%S}.csv",
                 "text/csv",
                 use_container_width=True
             )
             st.markdown('</div>', unsafe_allow_html=True)
     
     # ========== TABS ==========
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 Single Analysis", "🔗 YouTube", "📦 Batch Upload", "📊 Analytics"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Single Analysis",
+        "YouTube Comments",
+        "Batch Upload",
+        "Analytics Dashboard"
+    ])
     
     # ========== TAB 1: SINGLE ANALYSIS ==========
     with tab1:
-        st.markdown('<div class="premium-card">', unsafe_allow_html=True)
-        st.markdown("### ✍️ Analyze Single Text")
-        st.caption("Get instant sentiment, emotion, and multi-language insights")
-        
-        text = st.text_area(
-            "Enter your text:",
-            height=150,
-            placeholder="Paste your review, comment, or feedback here...",
-            label_visibility="collapsed"
-        )
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            do_emotion = st.checkbox("🎭 Emotion Analysis", value=emotion_ok, disabled=not emotion_ok)
-        with col2:
-            do_ml = st.checkbox("🌍 Multi-Language", value=ml_ok, disabled=not ml_ok)
-        with col3:
-            show_wc = st.checkbox("☁️ Word Cloud", value=False)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        if st.button("🔍 Analyze Now", type="primary", use_container_width=True):
-            if not text.strip():
-                st.warning("⚠️ Please enter some text to analyze")
-            else:
-                with st.spinner("🧠 Analyzing your text..."):
-                    result = predict_sentiment(text, tokenizer, model)
-                    lang = detect_language(text)
+        with st.container():
+            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+            st.markdown('<div class="card-header">Text Analysis</div>', unsafe_allow_html=True)
+            st.markdown('<div class="card-subheader">Analyze sentiment, emotions, and language from any text input</div>', unsafe_allow_html=True)
+            
+            text = st.text_area(
+                "Input Text",
+                height=140,
+                placeholder="Enter your text here for sentiment analysis...",
+                label_visibility="collapsed"
+            )
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                do_emotion = st.checkbox("Include Emotion Analysis", value=emotion_ok, disabled=not emotion_ok)
+            with col2:
+                do_ml = st.checkbox("Multi-Language Support", value=ml_ok, disabled=not ml_ok)
+            with col3:
+                show_wc = st.checkbox("Generate Word Cloud", value=False)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            if st.button("Run Analysis", type="primary", use_container_width=True):
+                if not text.strip():
+                    st.warning("Please enter text to analyze")
+                else:
+                    with st.spinner("Analyzing..."):
+                        result = predict_sentiment(text, tokenizer, model)
+                        lang = detect_language(text)
+                        
+                        emotion_res = predict_emotions(text, emotion_clf) if do_emotion and emotion_ok else None
+                        ml_res = predict_multilingual(text, ml_tok, ml_model) if do_ml and ml_ok and lang != 'en' else None
+                        
+                        st.session_state.total_analyses += 1
+                        st.session_state.analysis_history.append({
+                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                            'text': text[:80],
+                            'sentiment': result['label'],
+                            'confidence': result['confidence'],
+                            'language': lang
+                        })
                     
-                    emotion_res = predict_emotions(text, emotion_clf) if do_emotion and emotion_ok else None
-                    ml_res = predict_multilingual(text, ml_tok, ml_model) if do_ml and ml_ok and lang != 'en' else None
+                    # Result Card
+                    sentiment_class = result['label'].lower()
+                    emoji = "✓" if result['label'] == "Positive" else "✗"
                     
-                    st.session_state.total_analyses += 1
-                    st.session_state.analysis_history.append({
-                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                        'text': text[:80],
-                        'sentiment': result['label'],
-                        'confidence': result['confidence'],
-                        'language': lang
-                    })
-                
-                # Result Card
-                cls = "result-positive" if result['label'] == "Positive" else "result-negative"
-                emoji = "😊" if result['label'] == "Positive" else "😠"
-                
-                st.markdown(f"""
-                <div class="result-card {cls}">
-                    <h3>{emoji} {result['label']} Sentiment</h3>
-                    <p class="result-meta">
-                        <strong>Confidence:</strong> {result['confidence']:.1%} | 
-                        <strong>Language:</strong> {lang.upper()}
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Charts
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                    st.plotly_chart(create_confidence_chart(result['positive_prob'], result['negative_prob']), use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-                
-                if emotion_res:
-                    with col2:
-                        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                        st.plotly_chart(create_emotion_chart(emotion_res['emotions']), use_container_width=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                
-                if ml_res:
                     st.markdown(f"""
-                    <div class="info-box">
-                        <strong>🌍 Multi-Language Analysis:</strong> {ml_res['label']} 
-                        (Rating: {ml_res['rating']}/5, Confidence: {ml_res['confidence']:.1%})
+                    <div class="sentiment-result {sentiment_class}">
+                        <div class="sentiment-header">
+                            <div style="display: flex; align-items: center;">
+                                <div class="sentiment-icon">{emoji}</div>
+                                <div>
+                                    <div class="sentiment-label">{result['label']} Sentiment</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sentiment-meta">
+                            <div class="sentiment-meta-item">
+                                <span class="sentiment-meta-label">Confidence:</span>
+                                <span class="sentiment-meta-value">{result['confidence']:.1%}</span>
+                            </div>
+                            <div class="sentiment-meta-item">
+                                <span class="sentiment-meta-label">Language:</span>
+                                <span class="sentiment-meta-value">{lang.upper()}</span>
+                            </div>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
-                
-                if show_wc:
-                    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                    wc = create_wordcloud([text])
-                    if wc:
-                        st.pyplot(wc)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Charts
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                        st.markdown('<div class="chart-title">Confidence Distribution</div>', unsafe_allow_html=True)
+                        st.plotly_chart(
+                            create_confidence_chart(result['positive_prob'], result['negative_prob']),
+                            use_container_width=True,
+                            config={'displayModeBar': False}
+                        )
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    if emotion_res:
+                        with col2:
+                            st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                            st.markdown('<div class="chart-title">Emotion Analysis</div>', unsafe_allow_html=True)
+                            st.plotly_chart(
+                                create_emotion_chart(emotion_res['emotions']),
+                                use_container_width=True,
+                                config={'displayModeBar': False}
+                            )
+                            st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    if ml_res:
+                        st.markdown(f"""
+                        <div class="info-box">
+                            <strong>Multi-Language Analysis:</strong> {ml_res['label']} sentiment detected 
+                            (Rating: {ml_res['rating']}/5, Confidence: {ml_res['confidence']:.1%})
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    if show_wc:
+                        st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                        st.markdown('<div class="chart-title">Word Cloud</div>', unsafe_allow_html=True)
+                        wc = create_wordcloud([text])
+                        if wc:
+                            st.pyplot(wc)
+                        st.markdown('</div>', unsafe_allow_html=True)
     
     # ========== TAB 2: YOUTUBE ==========
     with tab2:
-        st.markdown('<div class="premium-card">', unsafe_allow_html=True)
-        st.markdown("### 🔗 YouTube Comments Analysis")
-        st.caption("Analyze sentiment from YouTube video comments")
+        with st.container():
+            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+            st.markdown('<div class="card-header">YouTube Comments Analysis</div>', unsafe_allow_html=True)
+            st.markdown('<div class="card-subheader">Extract and analyze sentiment from YouTube video comments</div>', unsafe_allow_html=True)
+            
+            url = st.text_input(
+                "Video URL",
+                placeholder="https://www.youtube.com/watch?v=...",
+                label_visibility="collapsed"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                max_items = st.slider("Maximum Comments", 10, 100, 30)
+            with col2:
+                show_wc_url = st.checkbox("Include Word Cloud", value=True, key="wc_url")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            if st.button("Fetch & Analyze Comments", type="primary", use_container_width=True):
+                if not url:
+                    st.warning("Please enter a YouTube URL")
+                elif 'youtube' not in url and 'youtu.be' not in url:
+                    st.error("Invalid YouTube URL")
+                else:
+                    with st.spinner("Fetching comments..."):
+                        comments, mode = fetch_youtube_comments(url, youtube_key if youtube_key else None, max_items)
+                        
+                        if isinstance(mode, str) and mode in ['demo', 'api']:
+                            if mode == 'demo':
+                                st.markdown("""
+                                <div class="info-box">
+                                    <strong>Demo Mode:</strong> Displaying sample comments. Add API key for real data.
+                                </div>
+                                """, unsafe_allow_html=True)
+                            else:
+                                st.markdown("""
+                                <div class="success-box">
+                                    <strong>Connected:</strong> Fetching real YouTube comments via API.
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.error(f"Error: {mode}")
+                            st.stop()
+                        
+                        if comments:
+                            results = []
+                            prog = st.progress(0)
+                            for i, c in enumerate(comments):
+                                if c['text']:
+                                    r = predict_sentiment(c['text'], tokenizer, model)
+                                    results.append({
+                                        'text': c['text'][:70],
+                                        'sentiment': r['label'],
+                                        'confidence': r['confidence'],
+                                        'author': c.get('author', 'Unknown')
+                                    })
+                                prog.progress((i+1)/len(comments))
+                            
+                            if results:
+                                df = pd.DataFrame(results)
+                                st.session_state.batch_results = df
+                                st.session_state.total_analyses += len(results)
+                                
+                                # KPI Metrics
+                                col1, col2, col3 = st.columns(3)
+                                pos = len(df[df['sentiment']=='Positive'])
+                                neg = len(df) - pos
+                                
+                                with col1:
+                                    st.markdown(f"""
+                                    <div class="kpi-card">
+                                        <div class="kpi-value">{len(df)}</div>
+                                        <div class="kpi-label">Total Comments</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with col2:
+                                    st.markdown(f"""
+                                    <div class="kpi-card">
+                                        <div class="kpi-value text-success">{pos}</div>
+                                        <div class="kpi-label">Positive</div>
+                                        <div class="kpi-change positive">+{pos/len(df)*100:.1f}%</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with col3:
+                                    st.markdown(f"""
+                                    <div class="kpi-card">
+                                        <div class="kpi-value text-danger">{neg}</div>
+                                        <div class="kpi-label">Negative</div>
+                                        <div class="kpi-change negative">{neg/len(df)*100:.1f}%</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                # Charts
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                                    st.markdown('<div class="chart-title">Sentiment Distribution</div>', unsafe_allow_html=True)
+                                    st.plotly_chart(
+                                        create_distribution_pie(df),
+                                        use_container_width=True,
+                                        config={'displayModeBar': False}
+                                    )
+                                    st.markdown('</div>', unsafe_allow_html=True)
+                                
+                                if show_wc_url:
+                                    with col2:
+                                        st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                                        st.markdown('<div class="chart-title">Word Cloud</div>', unsafe_allow_html=True)
+                                        wc = create_wordcloud(df['text'].tolist())
+                                        if wc:
+                                            st.pyplot(wc)
+                                        st.markdown('</div>', unsafe_allow_html=True)
+                                
+                                # Data Table
+                                st.markdown('<div class="dataframe-container">', unsafe_allow_html=True)
+                                st.dataframe(df, use_container_width=True, height=400)
+                                st.markdown('</div>', unsafe_allow_html=True)
+    
+    # ========== TAB 3: BATCH UPLOAD ==========
+    with tab3:
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">Batch File Processing</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-subheader">Upload CSV, Excel, TXT, or PDF files for bulk sentiment analysis</div>', unsafe_allow_html=True)
         
-        url = st.text_input(
-            "YouTube Video URL:",
-            placeholder="https://www.youtube.com/watch?v=...",
+        st.markdown("""
+        <div class="info-box">
+            <strong>Supported formats:</strong> CSV, Excel (.xlsx, .xls), TXT, PDF
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        file = st.file_uploader(
+            "Upload File",
+            type=['csv', 'xlsx', 'xls', 'txt', 'pdf'],
             label_visibility="collapsed"
         )
         
-        col1, col2 = st.columns(2)
-        with col1:
-            max_items = st.slider("Maximum comments to analyze:", 10, 100, 30)
-        with col2:
-            show_wc_url = st.checkbox("☁️ Generate Word Cloud", value=True, key="wc_url")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        if st.button("🚀 Fetch & Analyze", type="primary", use_container_width=True):
-            if not url:
-                st.warning("⚠️ Please enter a YouTube URL")
-            elif 'youtube' not in url and 'youtu.be' not in url:
-                st.error("❌ Please enter a valid YouTube URL")
-            else:
-                with st.spinner("🔍 Fetching YouTube comments..."):
-                    comments, mode = fetch_youtube_comments(url, youtube_key if youtube_key else None, max_items)
-                    
-                    if isinstance(mode, str) and mode in ['demo', 'api']:
-                        if mode == 'demo':
-                            st.markdown("""
-                            <div class="info-box">
-                                🔵 <strong>Demo Mode Active:</strong> Showing sample comments. 
-                                Add your YouTube API key in the sidebar for real data.
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("""
-                            <div class="success-box">
-                                ✅ <strong>Connected to YouTube API</strong> - Fetching real comments
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.error(f"❌ Error: {mode}")
-                        st.stop()
-                    
-                    if comments:
-                        st.markdown(f"""
-                        <div class="success-box">
-                            ✅ Successfully fetched <strong>{len(comments)} comments</strong>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        results = []
-                        prog = st.progress(0)
-                        for i, c in enumerate(comments):
-                            if c['text']:
-                                r = predict_sentiment(c['text'], tokenizer, model)
-                                results.append({
-                                    'text': c['text'][:70],
-                                    'sentiment': r['label'],
-                                    'confidence': r['confidence'],
-                                    'author': c.get('author', 'Unknown')
-                                })
-                            prog.progress((i+1)/len(comments))
-                        
-                        if results:
-                            df = pd.DataFrame(results)
-                            st.session_state.batch_results = df
-                            st.session_state.total_analyses += len(results)
-                            
-                            # Metrics
-                            col1, col2, col3 = st.columns(3)
-                            pos = len(df[df['sentiment']=='Positive'])
-                            neg = len(df) - pos
-                            
-                            with col1:
-                                st.markdown(f"""
-                                <div class="metric-card">
-                                    <div class="metric-value">{len(df)}</div>
-                                    <div class="metric-label">Total Comments</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            
-                            with col2:
-                                st.markdown(f"""
-                                <div class="metric-card">
-                                    <div class="metric-value" style="color: #10b981;">{pos}</div>
-                                    <div class="metric-label">Positive</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            
-                            with col3:
-                                st.markdown(f"""
-                                <div class="metric-card">
-                                    <div class="metric-value" style="color: #ef4444;">{neg}</div>
-                                    <div class="metric-label">Negative</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            
-                            # Charts
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                                st.plotly_chart(create_distribution_pie(df), use_container_width=True)
-                                st.markdown('</div>', unsafe_allow_html=True)
-                            
-                            if show_wc_url:
-                                with col2:
-                                    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                                    wc = create_wordcloud(df['text'].tolist())
-                                    if wc:
-                                        st.pyplot(wc)
-                                    st.markdown('</div>', unsafe_allow_html=True)
-                            
-                            # Data table
-                            st.markdown('<div class="dataframe-container">', unsafe_allow_html=True)
-                            st.dataframe(df, use_container_width=True, height=400)
-                            st.markdown('</div>', unsafe_allow_html=True)
-    
-    # ========== TAB 3: FILE UPLOAD ==========
-    with tab3:
-        st.markdown('<div class="premium-card">', unsafe_allow_html=True)
-        st.markdown("### 📦 Batch File Analysis")
-        st.caption("Upload CSV, Excel, TXT, or PDF files for bulk sentiment analysis")
-        
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.markdown("""
-            <div class="info-box">
-                ✅ <strong>Supported Formats:</strong> CSV, Excel (.xlsx, .xls), TXT, PDF
-            </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            if not CHARDET_AVAILABLE:
-                st.markdown("""
-                <div class="warning-box">
-                    💡 Install chardet for better encoding detection
-                </div>
-                """, unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        file = st.file_uploader("Upload your file:", type=['csv', 'xlsx', 'xls', 'txt', 'pdf'], label_visibility="collapsed")
-        
         if file:
-            with st.spinner("📖 Reading file..."):
+            with st.spinner("Processing file..."):
                 content, ftype, error, encoding_info = read_file(file)
             
             if error:
-                st.error(f"❌ {error}")
-                if 'encoding' in error.lower() or 'utf' in error.lower():
+                st.error(f"Error: {error}")
+                if 'encoding' in error.lower():
                     st.markdown("""
-                    <div class="info-box">
-                        💡 <strong>Encoding Issues?</strong><br>
-                        • Open the file in Excel/Notepad<br>
-                        • Save As → Choose 'CSV UTF-8' or 'Text (UTF-8)'<br>
-                        • Or install chardet: <code>pip install chardet</code>
+                    <div class="warning-box">
+                        <strong>Encoding issue detected.</strong> Try saving the file as UTF-8 or install chardet: <code>pip install chardet</code>
                     </div>
                     """, unsafe_allow_html=True)
             
             elif ftype == 'dataframe':
                 st.markdown(f"""
                 <div class="success-box">
-                    ✅ Successfully loaded <strong>{len(content)} rows</strong>
-                    {f'<br>📝 Encoding: {encoding_info}' if encoding_info else ''}
+                    Successfully loaded <strong>{len(content)} rows</strong>
+                    {f' • Encoding: {encoding_info}' if encoding_info else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Preview
-                with st.expander("📋 Preview Data", expanded=True):
+                with st.expander("Preview Data", expanded=True):
                     st.dataframe(content.head(10), use_container_width=True)
                 
                 # Find text column
@@ -1245,13 +1507,13 @@ def main():
                 if col:
                     st.markdown(f"""
                     <div class="info-box">
-                        ✅ Text column detected: <strong>{col}</strong>
+                        Text column detected: <strong>{col}</strong>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    max_rows = st.slider("Maximum rows to analyze:", 10, 500, 100)
+                    max_rows = st.slider("Maximum Rows to Process", 10, 500, 100)
                     
-                    if st.button("▶️ Start Analysis", type="primary", use_container_width=True):
+                    if st.button("Start Batch Analysis", type="primary", use_container_width=True):
                         valid = content[content[col].notna()][col]
                         results = []
                         prog = st.progress(0)
@@ -1281,41 +1543,45 @@ def main():
                             
                             with col1:
                                 st.markdown(f"""
-                                <div class="metric-card">
-                                    <div class="metric-value">{len(results)}</div>
-                                    <div class="metric-label">Analyzed</div>
+                                <div class="kpi-card">
+                                    <div class="kpi-value">{len(results)}</div>
+                                    <div class="kpi-label">Processed</div>
                                 </div>
                                 """, unsafe_allow_html=True)
                             
                             with col2:
                                 st.markdown(f"""
-                                <div class="metric-card">
-                                    <div class="metric-value" style="color: #10b981;">{pos}</div>
-                                    <div class="metric-label">Positive</div>
+                                <div class="kpi-card">
+                                    <div class="kpi-value text-success">{pos}</div>
+                                    <div class="kpi-label">Positive</div>
                                 </div>
                                 """, unsafe_allow_html=True)
                             
                             with col3:
                                 st.markdown(f"""
-                                <div class="metric-card">
-                                    <div class="metric-value" style="color: #ef4444;">{len(results)-pos}</div>
-                                    <div class="metric-label">Negative</div>
+                                <div class="kpi-card">
+                                    <div class="kpi-value text-danger">{len(results)-pos}</div>
+                                    <div class="kpi-label">Negative</div>
                                 </div>
                                 """, unsafe_allow_html=True)
                             
-                            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                            st.plotly_chart(create_distribution_pie(df), use_container_width=True)
+                            st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                            st.plotly_chart(
+                                create_distribution_pie(df),
+                                use_container_width=True,
+                                config={'displayModeBar': False}
+                            )
                             st.markdown('</div>', unsafe_allow_html=True)
                             
                             st.markdown('<div class="dataframe-container">', unsafe_allow_html=True)
                             st.dataframe(df, use_container_width=True, height=400)
                             st.markdown('</div>', unsafe_allow_html=True)
                         else:
-                            st.warning("⚠️ No valid text found to analyze")
+                            st.warning("No valid text found")
                 else:
-                    st.error("❌ No text column detected in the file")
+                    st.error("No text column detected")
                     st.info(f"Available columns: {', '.join(content.columns)}")
-                    selected_col = st.selectbox("Manually select text column:", content.columns)
+                    selected_col = st.selectbox("Select text column:", content.columns)
                     if st.button("Use Selected Column"):
                         col = selected_col
                         st.rerun()
@@ -1323,18 +1589,18 @@ def main():
             elif ftype == 'text':
                 st.markdown(f"""
                 <div class="success-box">
-                    ✅ Found <strong>{len(content)} text items</strong>
-                    {f'<br>📝 Encoding: {encoding_info}' if encoding_info else ''}
+                    Found <strong>{len(content)} text items</strong>
+                    {f' • Encoding: {encoding_info}' if encoding_info else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                with st.expander("📋 Preview", expanded=True):
+                with st.expander("Preview", expanded=True):
                     for i, item in enumerate(content[:5]):
                         st.text(f"{i+1}. {item[:100]}...")
                 
-                max_items = st.slider("Maximum items to analyze:", 10, 500, min(100, len(content)))
+                max_items = st.slider("Maximum Items", 10, 500, min(100, len(content)))
                 
-                if st.button("▶️ Start Analysis", type="primary", use_container_width=True):
+                if st.button("Start Batch Analysis", type="primary", use_container_width=True):
                     results = []
                     prog = st.progress(0)
                     
@@ -1362,47 +1628,51 @@ def main():
                         
                         with col1:
                             st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-value">{len(results)}</div>
-                                <div class="metric-label">Analyzed</div>
+                            <div class="kpi-card">
+                                <div class="kpi-value">{len(results)}</div>
+                                <div class="kpi-label">Processed</div>
                             </div>
                             """, unsafe_allow_html=True)
                         
                         with col2:
                             st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-value" style="color: #10b981;">{pos}</div>
-                                <div class="metric-label">Positive</div>
+                            <div class="kpi-card">
+                                <div class="kpi-value text-success">{pos}</div>
+                                <div class="kpi-label">Positive</div>
                             </div>
                             """, unsafe_allow_html=True)
                         
                         with col3:
                             st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-value" style="color: #ef4444;">{len(results)-pos}</div>
-                                <div class="metric-label">Negative</div>
+                            <div class="kpi-card">
+                                <div class="kpi-value text-danger">{len(results)-pos}</div>
+                                <div class="kpi-label">Negative</div>
                             </div>
                             """, unsafe_allow_html=True)
                         
-                        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                        st.plotly_chart(create_distribution_pie(df), use_container_width=True)
+                        st.markdown('<div class="chart-wrapper">', unsafe_allow_html=True)
+                        st.plotly_chart(
+                            create_distribution_pie(df),
+                            use_container_width=True,
+                            config={'displayModeBar': False}
+                        )
                         st.markdown('</div>', unsafe_allow_html=True)
                         
                         st.markdown('<div class="dataframe-container">', unsafe_allow_html=True)
                         st.dataframe(df, use_container_width=True, height=400)
                         st.markdown('</div>', unsafe_allow_html=True)
                     else:
-                        st.warning("⚠️ No valid text found to analyze")
+                        st.warning("No valid text found")
     
     # ========== TAB 4: ANALYTICS ==========
     with tab4:
-        st.markdown("### 📊 Analytics Dashboard")
-        st.caption("Executive summary of all your analyses")
+        st.markdown('<div class="card-header">Analytics Dashboard</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-subheader">Executive overview of all sentiment analysis activity</div>', unsafe_allow_html=True)
         
         if st.session_state.analysis_history:
             df = pd.DataFrame(st.session_state.analysis_history)
             
-            # Top metrics
+            # Top KPIs
             total = len(df)
             pos = len(df[df['sentiment']=='Positive'])
             avg = df['confidence'].mean()
@@ -1411,47 +1681,50 @@ def main():
             
             with col1:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value">{total}</div>
-                    <div class="metric-label">Total Analyses</div>
+                <div class="kpi-card">
+                    <div class="kpi-value">{total}</div>
+                    <div class="kpi-label">Total Analyses</div>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col2:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value" style="color: #10b981;">{pos/total:.1%}</div>
-                    <div class="metric-label">Positive Rate</div>
+                <div class="kpi-card">
+                    <div class="kpi-value text-success">{pos/total:.1%}</div>
+                    <div class="kpi-label">Positive Rate</div>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col3:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value">{avg:.1%}</div>
-                    <div class="metric-label">Avg Confidence</div>
+                <div class="kpi-card">
+                    <div class="kpi-value">{avg:.1%}</div>
+                    <div class="kpi-label">Avg Confidence</div>
                 </div>
                 """, unsafe_allow_html=True)
             
-            st.markdown('<div class="premium-card">', unsafe_allow_html=True)
-            st.markdown("### 📜 Recent Activity")
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+            st.markdown('<div class="card-header">Recent Activity</div>', unsafe_allow_html=True)
             
             for _, row in df.tail(10).sort_values('timestamp', ascending=False).iterrows():
-                emoji = "😊" if row['sentiment'] == "Positive" else "😠"
-                sentiment_color = "#10b981" if row['sentiment'] == "Positive" else "#ef4444"
+                emoji = "✓" if row['sentiment'] == "Positive" else "✗"
+                sentiment_class = "text-success" if row['sentiment'] == "Positive" else "text-danger"
                 
                 st.markdown(f"""
-                <div class="activity-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span style="font-size: 1.5rem;">{emoji}</span>
-                            <strong style="color: {sentiment_color}; font-size: 1.1rem;">{row['sentiment']}</strong>
-                            <span style="color: #6b7280; margin-left: 0.5rem;">({row['confidence']:.1%})</span>
+                <div class="activity-item">
+                    <div class="activity-header">
+                        <div class="activity-sentiment">
+                            <span class="activity-sentiment-icon">{emoji}</span>
+                            <span class="activity-sentiment-label {sentiment_class}">{row['sentiment']}</span>
                         </div>
+                        <span class="activity-confidence">{row['confidence']:.1%}</span>
                     </div>
                     <div class="activity-text">{row['text']}</div>
                     <div class="activity-meta">
-                        🌍 {row.get('language', 'en').upper()} • 📅 {row['timestamp']}
+                        <span>🌍 {row.get('language', 'en').upper()}</span>
+                        <span>📅 {row['timestamp']}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1459,10 +1732,10 @@ def main():
             st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div class="premium-card" style="text-align: center; padding: 3rem;">
-                <h3>📭 No Analysis History</h3>
-                <p style="color: #6b7280; margin-top: 1rem;">
-                    Start analyzing text to see your activity dashboard populate with insights
+            <div class="dashboard-card" style="text-align: center; padding: 4rem 2rem;">
+                <h3 style="color: var(--text-muted);">No Activity Yet</h3>
+                <p style="color: var(--text-muted); margin-top: 1rem;">
+                    Start analyzing text to populate your dashboard with insights
                 </p>
             </div>
             """, unsafe_allow_html=True)
