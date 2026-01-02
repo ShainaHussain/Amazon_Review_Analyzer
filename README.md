@@ -1,119 +1,120 @@
-🛒 Sentimart
-AI-Powered Sentiment Analysis for Product Reviews
+# 🛒 Sentimart  
+**A Research-Driven, Multi-Source Sentiment & Emotion Intelligence System**
 
-Built with Hugging Face Transformers and Streamlit 
+Sentimart is an actively evolving sentiment intelligence platform designed to analyze opinions from heterogeneous, real-world data sources. The system integrates transformer-based NLP models, emotion classification, multilingual understanding, and visual analytics to move beyond basic polarity detection toward deeper emotional insight.
 
-📌 Overview
-Sentimart is an interactive web app that performs sentiment analysis on Amazon product reviews using a fine-tuned BERT-based transformer model. It not only predicts whether a review is positive or negative, but also offers in-depth analytics like confidence scores, text statistics, and batch processing support.
+This project is not a static demo — it is a **living system under continuous development**, focused on experimentation, scalability, and research-oriented extensions.
 
-🚀 Features
-🤖 BERT-Powered Sentiment Classification
+## 🚀 Live Application
+👉 https://asentimart.streamlit.app/
 
-📊 Interactive Confidence Visualizations (using Plotly)
+## 🎯 Motivation & Vision
+Textual sentiment in the real world is **rarely binary** and **rarely clean**. Reviews, comments, and feedback often carry:
+- mixed emotions,
+- language variation,
+- noisy encodings,
+- and contextual ambiguity.
 
-🧠 Text Feature Analysis: word/sentence count, punctuation use, CAPS ratio
+Sentimart is built to address these realities by progressively evolving from **simple sentiment classification** to **multi-dimensional emotional intelligence** across platforms and formats.
 
-📈 Real-time Dashboard of past analyses
 
-📥 Batch Analysis from uploaded CSV files
+## 🧠 Core Capabilities
 
-📤 Export Results as CSV
+### 📝 Single Text Intelligence
+- Transformer-based sentiment classification
+- Confidence-aware predictions
+- Automatic language detection
+- Emotion profiling
+- Optional word-cloud based lexical insight
 
-✍️ Sample Reviews for quick testing
+### 🔗 YouTube Opinion Mining
+- Real YouTube Data API integration
+- Scalable batch comment processing
+- Sentiment distribution analytics
+- Demo fallback mode for reproducibility
+- Visual and tabular insights
 
-📉 Model Metrics Displayed (Accuracy, Precision, Recall, F1)
+### 📦 Document & Dataset Analysis
+- Supports **CSV, Excel, TXT, PDF**
+- Robust handling of real-world encoding issues
+- Automatic text column inference
+- High-volume batch sentiment aggregation
 
-📂 Project Structure
-bash
-Copy
-Edit
-sentimart/
-│
-├── app.py                # Main Streamlit app
-├── model/                # Folder containing your saved BERT model
-├── README.md             # Project documentation (this file)
-└── requirements.txt      # Dependencies
-🧠 Model Info
-Architecture: BERT Base Uncased
+### 😊 Emotion Understanding
+- Multi-label emotion classification
+- Emotion confidence visualization
+- Designed for extension toward compound emotions
 
-Max Token Length: 512
+### 🌍 Multilingual Reasoning
+- Multilingual transformer models for non-English inputs
+- Rating-based sentiment interpretation
+- Language-aware prediction routing
 
-Labels: Positive (1), Negative (0)
+### 📊 Analytical Tracking
+- Session-level analytics
+- Confidence trend monitoring
+- Historical interaction logging
 
-Format: Hugging Face AutoModelForSequenceClassification
+## 🖼️ Application Interface
 
-📸 Screenshots
-Input Review  ![alt text](image.png)  ![alt text](image-3.png)
-Analysis Result ![alt text](image-1.png) ![alt text](image-2.png) ![alt text](image-4.png)
+<img width="752" height="439" alt="image" src="https://github.com/user-attachments/assets/76cc01db-1e59-4249-9be8-a1e3971d37fe" />
+<img width="748" height="455" alt="image" src="https://github.com/user-attachments/assets/09b5e881-570b-4ab7-962c-889caef297a3" />
+<img width="767" height="442" alt="image" src="https://github.com/user-attachments/assets/3cb10d42-ed2d-4d11-86f8-05cddeb0b659" />
+<img width="765" height="443" alt="image" src="https://github.com/user-attachments/assets/ab53cf24-e047-4af7-b05a-0f02f47c4164" />
+<img width="749" height="437" alt="image" src="https://github.com/user-attachments/assets/07e985b5-459c-4931-8179-37f34d0c43e3" />
+<img width="926" height="427" alt="image" src="https://github.com/user-attachments/assets/c3062245-cd26-4376-9cc5-15ee7014e7da" />
 
-⚙️ How to Run Locally
-1. Clone the repo
-bash
-Copy
-Edit
-git clone https://github.com/yourusername/sentimart.git
+
+## 🛠️ Technology Stack
+
+- Frontend / UI: Streamlit
+- Core NLP: Hugging Face Transformers, PyTorch
+- Emotion Model: j-hartmann/emotion-english-distilroberta-base
+- Multilingual Sentiment: nlptown/bert-base-multilingual-uncased-sentiment
+- Data Processing: Pandas, NumPy
+- Visualization: Plotly, Matplotlib, WordCloud
+- APIs: YouTube Data API v3
+- Utilities: PyPDF2, chardet, langdetect
+
+## ⚙️ System Workflow
+
+- Input ingestion (text, URL, or document)
+- Encoding normalization and language detection
+- Dynamic model selection based on input characteristics
+- Sentiment and emotion inference
+- Visualization, aggregation, and analytics tracking
+
+## 📂 Supported Input Sources
+Source      	Status
+Plain Text  	✅
+YouTube	      ✅
+CSV         	✅
+Excel       	✅
+TXT         	✅
+PDF         	✅
+
+## 🔐 API Integration
+
+- YouTube analysis runs in demo mode by default
+- Real comment extraction is enabled via user-provided API keys
+- API usage is optional and modular
+
+## ▶️ Local Execution
+
+clone https://github.com/ShainaHussain/Amazon_Review_Analyzer.git
 cd sentimart
-2. Install dependencies
-bash
-Copy
-Edit
 pip install -r requirements.txt
-3. Add your model
-Place your fine-tuned BERT model inside the model/ folder. It should include:
-
-config.json
-
-pytorch_model.bin
-
-tokenizer_config.json
-
-vocab.txt (or tokenizer files)
-
-4. Run the app
-bash
-Copy
-Edit
 streamlit run app.py
-📑 Sample CSV Format (for batch analysis)
-csv
-Copy
-Edit
-review
-"This product was amazing and worth the price!"
-"Didn't like it. Poor quality and slow delivery."
-...
-🧪 Example Reviews
-Positive: “Outstanding build quality and fast performance.”
 
-Negative: “Worst purchase ever. Broke after two days.”
+## 🚧 Active Development & Research Direction
 
-Mixed: “Great price but average sound quality.”
+- Sentimart is intentionally designed as an extensible system. Current development and research efforts focus on:
+- Mixed and compound emotion detection
+- Neutral and ambiguous sentiment classes
+- Aspect-based sentiment analysis
+- Cross-platform opinion aggregation
+- Persistent analytics storage
+- Domain-specific fine-tuning
+- Model benchmarking and performance evaluation
 
-📈 Model Performance (Manual Entry)
-Metric	Value
-Accuracy	94%
-Precision	93%
-Recall	95%
-F1-Score	94%
-
-📤 Export Functionality
-Click the "Export History" button to download all review analyses as a CSV file, including predictions and text stats.
-
-📎 Dependencies
-transformers
-
-torch
-
-pandas
-
-numpy
-
-plotly
-
-streamlit
-
-🙋‍♀️ Created By
-Shaina — for the Amazon ML Summer Internship Project
-Powered by 🤗 Transformers & Streamlit
-
-# Amazon_Review_Analyzer
+These additions are not theoretical — the architecture is already structured to support them.
