@@ -86,11 +86,17 @@ Sentimart is built to address these realities by progressively evolving from **s
 
 ## 📂 Supported Input Sources
 Source      	Status
+
 Plain Text  	✅
+
 YouTube	      ✅
+
 CSV         	✅
+
 Excel       	✅
+
 TXT         	✅
+
 PDF         	✅
 
 ## 🔐 API Integration
@@ -102,8 +108,11 @@ PDF         	✅
 ## ▶️ Local Execution
 
 clone https://github.com/ShainaHussain/Amazon_Review_Analyzer.git
+
 cd sentimart
+
 pip install -r requirements.txt
+
 streamlit run app.py
 
 ## 🚧 Active Development & Research Direction
