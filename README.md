@@ -1,7 +1,7 @@
 # 🛒 Sentimart  
 **A Research-Driven, Multi-Source Sentiment & Emotion Intelligence System**
 
-Sentimart is an actively evolving sentiment intelligence platform designed to analyze opinions from heterogeneous, real-world data sources. The system integrates transformer based NLP models, emotion classification, multilingual understanding, and visual analytics to move beyond basic polarity detection toward deeper emotional insight.
+Sentimart is an actively evolving sentiment intelligence platform designed to analyze opinions from heterogeneous, real-world data sources. The system integrates transformer based NLP models, emotion classification, multilingual understanding, and visual analytics to move beyond basic polarity detection toward deeper emotional insight. 
 
 This project is not a static demo , it is a **living system under continuous development**, focused on experimentation, scalability, and research-oriented extensions.
 
